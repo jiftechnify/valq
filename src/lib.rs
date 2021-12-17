@@ -51,6 +51,13 @@ macro_rules! query_value {
     (@conv (seq) $v:tt) => {
         $v.as_sequence()
     };
+    // for toml::Value
+    (@conv (datetime) $v:tt) => {
+        $v.as_datetime()
+    };
+    (@conv (table) $v:tt) => {
+        $v.as_table()
+    };
     (@conv ($to:ident) $v:tt) => {
         compile_error!(concat!("unsupported target type `", stringify!($to), "` is specified in query_value!()"))
     };
@@ -87,6 +94,10 @@ macro_rules! query_value {
     };
     (@conv_mut (seq) $v:tt) => {
         $v.as_sequence_mut()
+    };
+    // for toml::Value
+    (@conv_mut (table) $v:tt) => {
+        $v.as_table_mut()
     };
     (@conv_mut ($to:ident) $v:tt) => {
         compile_error!(concat!("unsupported target type `", stringify!($to), "` is specified in query_value!()"))
