@@ -42,7 +42,7 @@ macro_rules! query_value {
         $v.as_object()
     };
     (@conv (arr) $v:tt) => {
-        $v.as_arr()
+        $v.as_array()
     };
     // for serde_yaml::Value
     (@conv (map) $v:tt) => {
