@@ -1,6 +1,6 @@
 #[macro_export]
 macro_rules! query_value {
-    // non-mut traversal
+    /* non-mut traversal */
     (@trv ($to:ident) $v:tt . $prop:ident $($rest:tt)*) => {
         $v.get(stringify!($prop)).and_then(|v| query_value!(@trv ($to) v $($rest)*))
     };
@@ -16,7 +16,7 @@ macro_rules! query_value {
     (@trv $($_:tt)*) => {
         compile_error!("invalid query syntax for query_value!()")
     };
-    // non-mut conversion
+    /* non-mut conversion */
     (@conv (val) $v:tt) => {
         Some($v)
     };
@@ -44,11 +44,18 @@ macro_rules! query_value {
     (@conv (arr) $v:tt) => {
         $v.as_arr()
     };
+    // for serde_yaml::Value
+    (@conv (map) $v:tt) => {
+        $v.as_mapping()
+    };
+    (@conv (seq) $v:tt) => {
+        $v.as_sequence()
+    };
     (@conv ($to:ident) $v:tt) => {
         compile_error!(concat!("unsupported target type `", stringify!($to), "` is specified in query_value!()"))
     };
 
-    // mut traversal
+    /* mut traversal */
     (@trv_mut ($to:ident) $v:tt . $prop:ident $($rest:tt)*) => {
         $v.get_mut(stringify!($prop)).and_then(|v| query_value!(@trv_mut ($to) v $($rest)*))
     };
@@ -64,7 +71,7 @@ macro_rules! query_value {
     (@trv_mut $($_:tt)*) => {
         compile_error!("invalid query syntax for query_value!()")
     };
-    // mut conversion
+    /* mut conversion */
     (@conv_mut (val) $v:tt) => {
         Some($v)
     };
@@ -74,11 +81,18 @@ macro_rules! query_value {
     (@conv_mut (arr) $v:tt) => {
         $v.as_array_mut()
     };
+    // for serde_yaml::Value
+    (@conv_mut (map) $v:tt) => {
+        $v.as_mapping_mut()
+    };
+    (@conv_mut (seq) $v:tt) => {
+        $v.as_sequence_mut()
+    };
     (@conv_mut ($to:ident) $v:tt) => {
         compile_error!(concat!("unsupported target type `", stringify!($to), "` is specified in query_value!()"))
     };
 
-    // initial state
+    /* starting point */
     (mut ($v:tt $($path:tt)+) -> $to:ident) => {
         query_value!(@trv_mut ($to) $v $($path)+)
     };
