@@ -1,0 +1,19 @@
+str = "s"
+int = 123
+float = 1.23
+date = 2021-12-18T12:15:12+09:00
+arr = ["first", "second", "third" ]
+
+[table]
+  first = "zzz"
+  second = "yyy"
+
+[[arr_of_tables]]
+hidden = "tale"
+
+[[arr_of_tables]]
+hoge = 1
+fuga = 2
+
+[[arr_of_tables]]
+inner_arr = [1, 2, 3]

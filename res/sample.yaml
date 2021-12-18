@@ -1,0 +1,9 @@
+str: s
+num: 123
+map:
+  first: zzz
+  second: yyy
+seq:
+  - first
+  - 42
+  - hidden: tale
