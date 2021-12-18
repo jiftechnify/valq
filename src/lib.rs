@@ -38,17 +38,17 @@ macro_rules! query_value {
     (@conv (null) $v:tt) => {
         $v.as_null()
     };
-    (@conv (obj) $v:tt) => {
+    (@conv (object) $v:tt) => {
         $v.as_object()
     };
-    (@conv (arr) $v:tt) => {
+    (@conv (array) $v:tt) => {
         $v.as_array()
     };
     // for serde_yaml::Value
-    (@conv (map) $v:tt) => {
+    (@conv (mapping) $v:tt) => {
         $v.as_mapping()
     };
-    (@conv (seq) $v:tt) => {
+    (@conv (sequence) $v:tt) => {
         $v.as_sequence()
     };
     // for toml::Value
@@ -82,17 +82,17 @@ macro_rules! query_value {
     (@conv_mut (val) $v:tt) => {
         Some($v)
     };
-    (@conv_mut (obj) $v:tt) => {
+    (@conv_mut (object) $v:tt) => {
         $v.as_object_mut()
     };
-    (@conv_mut (arr) $v:tt) => {
+    (@conv_mut (array) $v:tt) => {
         $v.as_array_mut()
     };
     // for serde_yaml::Value
-    (@conv_mut (map) $v:tt) => {
+    (@conv_mut (mapping) $v:tt) => {
         $v.as_mapping_mut()
     };
-    (@conv_mut (seq) $v:tt) => {
+    (@conv_mut (sequence) $v:tt) => {
         $v.as_sequence_mut()
     };
     // for toml::Value
