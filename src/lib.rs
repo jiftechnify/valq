@@ -1,3 +1,42 @@
+//! # valq
+//! `valq` provides macro(s) for querying and extracting value from structured data **in very concise manner, like JavaScript code**.
+//!
+//! look & feel:
+//!
+//! ```
+//! use serde_json::Value;
+//! use valq::query_value;
+//!
+//! let j: Value = ...;
+//! let deep_val: Option<&Value> = query_value(j.path.to.value.at.deep);
+//! ```
+//!
+//! For now, there is only single macro exported: `query_value`. See document of `query_value` for detailed usage.
+
+/// A macro for querying inner value of structured data.
+///
+/// This macro can be used with arbitrary data structure(to call, `Value`) that supports `get(idx) -> Option<&Value>` method that retrieves a value at `idx`(can be string (retrieving "property"/"field"), or integer (indexing "array"/"sequence")).
+///
+/// Instances of compatible data structures:
+///
+/// - [`serde_json::Value`](https://docs.rs/serde_json/latest/serde_json/enum.Value.html)
+/// - [`serde_yaml::Value`](https://docs.rs/serde_yaml/latest/serde_yaml/enum.Value.html)
+/// - [`toml::Value`](https://docs.rs/toml/latest/toml/value/enum.Value.html)
+/// - ...and more?
+///
+/// # Examples
+/// ## Basic Usage
+///
+/// ```
+/// ```
+///
+/// ## Convert to Specified Type
+/// ```
+/// ```
+///
+/// ## Extracting Mutable Reference to Inner Value
+/// ```
+/// ```
 #[macro_export]
 macro_rules! query_value {
     /* non-mut traversal */
