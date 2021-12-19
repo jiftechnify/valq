@@ -6,7 +6,7 @@ edition = "2021"
 license = "MIT"
 description = "macros for querying and extracting value from structured data by JavaScript-like syntax"
 readme = "README.md"
-repository = ""
+repository = "https://github.com/jiftechnify/valq"
 keywords = ["macro", "query", "extract", "json", "serde"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
