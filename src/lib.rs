@@ -34,9 +34,10 @@
 /// let abyss = query_value!(obj.path.to.matrix[0][1].abyss);
 /// ```
 ///
-/// ## Convert to Specified Type
+/// ## Converting to Specified Type
 /// ```
-/// // try to convert extracted value to `u64` by `as_u64()` method  on that value. results in `None` in case of type mismatch
+/// // try to convert extracted value to `u64` by `as_u64()` method  on that value.
+/// // results in `None` in case of type mismatch
 /// let foo_u64: Option<u64> = query_value!(obj.foo -> u64)
 ///
 /// // in case of mutable reference extraction (see below), `as_xxx_mut()` method will be used.
