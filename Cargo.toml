@@ -1,7 +1,13 @@
 [package]
 name = "valq"
 version = "0.1.0"
+authors = ["jiftechnify <jiftech.stlfy@gmail.com>"]
 edition = "2021"
+license = "MIT"
+description = "macros for querying and extracting value from structured data by JavaScript-like syntax"
+readme = "README.md"
+repository = ""
+keywords = ["macro", "query", "extract", "serde", "json", "yaml", "toml"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
