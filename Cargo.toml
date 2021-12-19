@@ -7,7 +7,7 @@ license = "MIT"
 description = "macros for querying and extracting value from structured data by JavaScript-like syntax"
 readme = "README.md"
 repository = ""
-keywords = ["macro", "query", "extract", "serde", "json", "yaml", "toml"]
+keywords = ["macro", "query", "extract", "json", "serde"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
