@@ -1,5 +1,5 @@
 //! # valq
-//! `valq` provides macro(s) for querying and extracting value from structured data **in very concise manner, like JavaScript code**.
+//! `valq` provides a macro for querying and extracting value from structured data **in very concise manner, like the JavaScript syntax**.
 //!
 //! look & feel:
 //!
@@ -8,35 +8,84 @@
 //! use valq::query_value;
 //!
 //! let j: Value = ...;
-//! let deep_val: Option<&Value> = query_value(j.path.to.value.at.deep);
+//! let deep_val: Option<&Value> = query_value!(j.path.to.value.at.deep);
 //! ```
 //!
 //! For now, there is only single macro exported: `query_value`. See document of `query_value` for detailed usage.
 
 /// A macro for querying inner value of structured data.
 ///
-/// This macro can be used with arbitrary data structure(to call, `Value`) that supports `get(idx) -> Option<&Value>` method that retrieves a value at `idx`(can be string (retrieving "property"/"field"), or integer (indexing "array"/"sequence")).
+/// # Examples
+/// ## Basic Usage
+/// ```
+/// // get field `foo` from JSON object `obj`
+/// let foo = query_value!(obj.foo);
+///
+/// // get nested field `bar` inside object `foo` in JSON object `obj`
+/// let bar = query_value!(obj.foo.bar);
+///
+/// // get head of JSON array 'arr'
+/// let head = query_value!(arr[0]);
+///
+/// // get head of nested JSON array `arr` in JSON object `obj`
+/// let head = query_value!(obj.arr[0]);
+///
+/// // more complex example!
+/// let abyss = query_value!(obj.path.to.matrix[0][1].abyss);
+/// ```
+///
+/// ## Convert to Specified Type
+/// ```
+/// // try to convert extracted value to `u64` by `as_u64()` method  on that value. results in `None` in case of type mismatch
+/// let foo_u64: Option<u64> = query_value!(obj.foo -> u64)
+///
+/// // in case of mutable reference extraction (see below), `as_xxx_mut()` method will be used.
+/// let arr_vec: Option<&mut Vec<Value>> = query_value!(mut obj.arr -> array)
+/// ```
+///
+/// ## Extracting Mutable Reference to Inner Value
+/// ```
+/// use serde_json::{json, Value}
+///
+/// let mut obj = json!({"foo": { "bar": { "x": 1, "y": 2 }}});
+/// {
+///     // prefixed `mut` means extracting mutable reference
+///     let bar: &mut Value = query_value!(mut obj.foo.bar).unwrap();
+///     *bar = json!({"x": 100, "y": 200});
+/// }
+/// assert_eq!(query_value!(obj.foo.bar.x -> u64), Some(100));
+/// assert_eq!(query_value!(obj.foo.bar.y -> u64), Some(200));
+/// ```
+///
+/// # Query Syntax
+///
+/// ```txt
+/// query_value!(("mut")? <value> ("." <key> | "[" <idx> "]")+ ("->" <to_type>)?)
+/// ```
+///
+/// where:
+///
+/// - `<value>`: An expression of structured data to query
+/// - `<key>`: A key of "property"/"field to extract
+///     + Any identifiers or `str` literals can be used. You may want to use `str` literals to get property keyed by a string that is invalid identifier in Rust (e.g. starts with digits).
+/// - `<idx>`: An index of array-like stracture to extract
+///     + Any expressions evaluates to integer value can be used.
+/// - `<to_type>`: A name of "type" queried value should be converted to
+///
+/// # Compatibility
+/// This macro can be used with arbitrary data structure(to call, `Value`) that supports `get(&self, idx) -> Option<&Value>` method that retrieves a value at `idx`(can be string (retrieving "property"/"field"), or integer (indexing "array"/"sequence")).
+///
+/// Type conversion query `-> xxx` is available if `Value` has conversion method `as_xxx(&self) -> Option<X>`/`as_xxx_mut(&mut self) -> Option<X>`.
+///
+/// Extracting mutable reference is also supported when `Value` supports `get_mut(&mut self, idx) -> Option<&Value>`.
 ///
 /// Instances of compatible data structures:
 ///
 /// - [`serde_json::Value`](https://docs.rs/serde_json/latest/serde_json/enum.Value.html)
 /// - [`serde_yaml::Value`](https://docs.rs/serde_yaml/latest/serde_yaml/enum.Value.html)
 /// - [`toml::Value`](https://docs.rs/toml/latest/toml/value/enum.Value.html)
-/// - ...and more?
+/// - and more...
 ///
-/// # Examples
-/// ## Basic Usage
-///
-/// ```
-/// ```
-///
-/// ## Convert to Specified Type
-/// ```
-/// ```
-///
-/// ## Extracting Mutable Reference to Inner Value
-/// ```
-/// ```
 #[macro_export]
 macro_rules! query_value {
     /* non-mut traversal */
@@ -204,6 +253,7 @@ mod tests {
         use serde_json::{json, Value};
 
         fn make_sample_json() -> Value {
+            // json!({"foo": { "bar": { "x": 1, "y": 2 }}})
             json!({
                 "str": "s",
                 "nums": {
