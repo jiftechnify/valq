@@ -2,7 +2,7 @@
 
 [Docs.rs shield]: https://img.shields.io/docsrs/valq/latest
 [Docs.rs link]: https://docs.rs/valq/latest
-[crates.io shield]: https://img.shields.io/crates/dv/valq
+[crates.io shield]: https://img.shields.io/crates/v/valq
 [crates.io link]: https://crates.io/crates/valq
 
 `valq` provides a macro for querying and extracting value from structured data **in very concise manner, like the JavaScript syntax**.
