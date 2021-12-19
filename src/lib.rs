@@ -3,7 +3,7 @@
 //!
 //! look & feel:
 //!
-//! ```
+//! ```ignore
 //! use serde_json::Value;
 //! use valq::query_value;
 //!
@@ -17,7 +17,7 @@
 ///
 /// # Examples
 /// ## Basic Usage
-/// ```
+/// ```ignore
 /// // get field `foo` from JSON object `obj`
 /// let foo = query_value!(obj.foo);
 ///
@@ -35,7 +35,7 @@
 /// ```
 ///
 /// ## Converting to Specified Type
-/// ```
+/// ```ignore
 /// // try to convert extracted value to `u64` by `as_u64()` method  on that value.
 /// // results in `None` in case of type mismatch
 /// let foo_u64: Option<u64> = query_value!(obj.foo -> u64)
@@ -46,7 +46,8 @@
 ///
 /// ## Extracting Mutable Reference to Inner Value
 /// ```
-/// use serde_json::{json, Value}
+/// use serde_json::{json, Value};
+/// use valq::query_value;
 ///
 /// let mut obj = json!({"foo": { "bar": { "x": 1, "y": 2 }}});
 /// {
