@@ -475,7 +475,7 @@ mod tests {
         use super::query_value;
         use toml::{
             from_str,
-            value::{Array, Map},
+            value::{Array, Table},
             Value,
         };
 
@@ -483,8 +483,8 @@ mod tests {
             let toml_str = include_str!("../res/sample.toml");
             from_str(toml_str).unwrap()
         }
-        fn sample_table() -> Map<String, Value> {
-            Map::from_iter([
+        fn sample_table() -> Table {
+            Table::from_iter([
                 ("first".to_string(), Value::String("zzz".to_string())),
                 ("second".to_string(), Value::String("yyy".to_string())),
             ])
@@ -496,12 +496,12 @@ mod tests {
                 .collect()
         }
         fn sample_arr_of_tables() -> Array {
-            let t1 = Map::from_iter([("hidden".to_string(), Value::String("tale".to_string()))]);
-            let t2 = Map::from_iter([
+            let t1 = Table::from_iter([("hidden".to_string(), Value::String("tale".to_string()))]);
+            let t2 = Table::from_iter([
                 ("hoge".to_string(), Value::Integer(1)),
                 ("fuga".to_string(), Value::Integer(2)),
             ]);
-            let t3 = Map::from_iter([(
+            let t3 = Table::from_iter([(
                 "inner_arr".to_string(),
                 Value::Array(vec![
                     Value::Integer(1),
