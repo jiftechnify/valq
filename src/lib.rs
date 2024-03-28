@@ -233,8 +233,7 @@ mod tests {
             for (res, exp) in $tests {
                 if let Some(act) = res {
                     assert_eq!(act, &exp)
-                }
-                else {
+                } else {
                     panic!("expect Some(...) but actually None")
                 }
             }
@@ -318,7 +317,7 @@ mod tests {
         fn test_query_and_convert() {
             let j = make_sample_json();
 
-            let tests = vec![
+            let tests = [
                 query_value!(j.str -> str) == Some("s"),
                 query_value!(j.nums.u64 -> u64) == Some(123),
                 query_value!(j.nums.i64 -> i64) == Some(-123),
@@ -371,7 +370,7 @@ mod tests {
         fn test_query_fail() {
             let j = make_sample_json();
 
-            let tests = vec![
+            let tests = [
                 query_value!(j.unknown),   // non existent property
                 query_value!(j.nums.i128), // non existent property of nested object
                 query_value!(j.obj[0]),    // indexing against non-array value
@@ -388,7 +387,7 @@ mod tests {
         fn test_query_fail_mut() {
             let mut j = make_sample_json();
 
-            let tests = vec![
+            let tests = [
                 { query_value!(mut j.unknown).is_none() },
                 { query_value!(mut j.nums.i128).is_none() },
                 { query_value!(mut j.obj[0]).is_none() },
@@ -410,28 +409,22 @@ mod tests {
         }
 
         fn sample_mapping() -> Mapping {
-            Mapping::from_iter(
-                vec![
-                    (
-                        Value::String("first".to_string()),
-                        Value::String("zzz".to_string()),
-                    ),
-                    (
-                        Value::String("second".to_string()),
-                        Value::String("yyy".to_string()),
-                    ),
-                ]
-                .into_iter(),
-            )
+            Mapping::from_iter([
+                (
+                    Value::String("first".to_string()),
+                    Value::String("zzz".to_string()),
+                ),
+                (
+                    Value::String("second".to_string()),
+                    Value::String("yyy".to_string()),
+                ),
+            ])
         }
         fn sample_map_in_seq() -> Mapping {
-            Mapping::from_iter(
-                vec![(
-                    Value::String("hidden".to_string()),
-                    Value::String("tale".to_string()),
-                )]
-                .into_iter(),
-            )
+            Mapping::from_iter([(
+                Value::String("hidden".to_string()),
+                Value::String("tale".to_string()),
+            )])
         }
         fn sample_sequence() -> Sequence {
             Sequence::from_iter(vec![
@@ -461,7 +454,7 @@ mod tests {
         fn test_query_and_convert() {
             let y = make_sample_yaml();
 
-            let tests = vec![
+            let tests = [
                 query_value!(y.str -> str) == Some("s"),
                 query_value!(y.num -> u64) == Some(123),
                 query_value!(y.map -> mapping).unwrap().len() == 2,
@@ -491,13 +484,10 @@ mod tests {
             from_str(toml_str).unwrap()
         }
         fn sample_table() -> Map<String, Value> {
-            Map::from_iter(
-                vec![
-                    ("first".to_string(), Value::String("zzz".to_string())),
-                    ("second".to_string(), Value::String("yyy".to_string())),
-                ]
-                .into_iter(),
-            )
+            Map::from_iter([
+                ("first".to_string(), Value::String("zzz".to_string())),
+                ("second".to_string(), Value::String("yyy".to_string())),
+            ])
         }
         fn sample_array() -> Array {
             vec!["first", "second", "third"]
@@ -506,27 +496,19 @@ mod tests {
                 .collect()
         }
         fn sample_arr_of_tables() -> Array {
-            let t1 = Map::from_iter(
-                vec![("hidden".to_string(), Value::String("tale".to_string()))].into_iter(),
-            );
-            let t2 = Map::from_iter(
-                vec![
-                    ("hoge".to_string(), Value::Integer(1)),
-                    ("fuga".to_string(), Value::Integer(2)),
-                ]
-                .into_iter(),
-            );
-            let t3 = Map::from_iter(
-                vec![(
-                    "inner_arr".to_string(),
-                    Value::Array(vec![
-                        Value::Integer(1),
-                        Value::Integer(2),
-                        Value::Integer(3),
-                    ]),
-                )]
-                .into_iter(),
-            );
+            let t1 = Map::from_iter([("hidden".to_string(), Value::String("tale".to_string()))]);
+            let t2 = Map::from_iter([
+                ("hoge".to_string(), Value::Integer(1)),
+                ("fuga".to_string(), Value::Integer(2)),
+            ]);
+            let t3 = Map::from_iter([(
+                "inner_arr".to_string(),
+                Value::Array(vec![
+                    Value::Integer(1),
+                    Value::Integer(2),
+                    Value::Integer(3),
+                ]),
+            )]);
 
             vec![t1, t2, t3].into_iter().map(Value::Table).collect()
         }
@@ -566,7 +548,7 @@ mod tests {
         fn test_query_and_convert() {
             let t = make_sample_toml();
 
-            let tests = vec![
+            let tests = [
                 query_value!(t.str -> str) == Some("s"),
                 query_value!(t.int -> integer) == Some(123),
                 query_value!(t.float -> float) == Some(1.23),
