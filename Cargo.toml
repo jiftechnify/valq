@@ -12,6 +12,6 @@ keywords = ["macro", "query", "extract", "json", "serde"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dev-dependencies]
-serde_json = "1.0.68"
+serde_json = "1.0.117"
 serde_yaml = "0.9.34"
 toml = "0.8.12"
