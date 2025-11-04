@@ -343,8 +343,8 @@ mod tests {
 
             // rewriting value of prop
             {
-                let obj_innner = query_value!(mut j.obj.inner).unwrap();
-                *obj_innner = json!("just woke up!");
+                let obj_inner = query_value!(mut j.obj.inner).unwrap();
+                *obj_inner = json!("just woke up!");
             }
             assert_eq!(
                 query_value!(j.obj),
