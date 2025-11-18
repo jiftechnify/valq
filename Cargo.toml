@@ -14,4 +14,4 @@ keywords = ["macro", "query", "extract", "json", "serde"]
 [dev-dependencies]
 serde_json = "1.0.145"
 serde_yaml = "0.9.34"
-toml = "0.8.23"
+toml = "0.9.8"
