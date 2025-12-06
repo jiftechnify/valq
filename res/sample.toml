@@ -5,8 +5,8 @@ date = 2021-12-18T12:15:12+09:00
 arr = ["first", "second", "third" ]
 
 [table]
-  first = "zzz"
-  second = "yyy"
+first = "zzz"
+second = "yyy"
 
 [[arr_of_tables]]
 hidden = "tale"
@@ -17,3 +17,7 @@ fuga = 2
 
 [[arr_of_tables]]
 inner_arr = [1, 2, 3]
+
+[author]
+name = "jiftechnify"
+age = 31

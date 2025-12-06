@@ -34,7 +34,7 @@
 /// let abyss = query_value!(obj.path.to.matrix[0][1].abyss);
 /// ```
 ///
-/// ## Converting Value with Conversion Methods
+/// ## `->`: Converting Value with Conversion Methods
 /// ```ignore
 /// // try to convert extracted value with `as_u64()` method on that value.
 /// // results in `None` in case of type mismatch
@@ -44,7 +44,29 @@
 /// let arr_vec: Option<&mut Vec<Value>> = query_value!(mut obj.arr -> as_array_mut)
 /// ```
 ///
-/// ## Extracting Mutable Reference to Inner Value
+/// ## `>>`: Deserializing Value into Any Types that Implement `serde::Deserialize`
+/// ```
+/// use serde::Deserialize;
+/// use serde_json::json;
+/// use valq::query_value;
+///
+/// #[derive(Debug, PartialEq, Deserialize)]
+/// struct Person {
+///     name: String,
+///     age: u8,
+/// }
+///
+/// let j = json!({ "author": {"name": "jiftechnify", "age": 31 } });
+/// assert_eq!(
+///     query_value!(j.author >> Person),
+///     Some(Person {
+///         name: "jiftechnify".into(),
+///         age: 31u8,
+///     }),
+/// );
+/// ```
+///
+/// ## `mut`: Extracting Mutable Reference to Inner Value
 /// ```
 /// use serde_json::{json, Value};
 /// use valq::query_value;
@@ -62,7 +84,7 @@
 /// # Query Syntax
 ///
 /// ```txt
-/// query_value!(("mut")? <value> ("." <key> | "[" <idx> "]")+ ("->" <converter>)?)
+/// query_value!(("mut")? <value> ("." <key> | "[" <idx> "]")+ ("->" <converter> | ">>" <dest_type>)?)
 /// ```
 ///
 /// where:
@@ -73,6 +95,7 @@
 /// - `<idx>`: An index of array-like stracture to extract
 ///     + Any expressions evaluates to integer value can be used.
 /// - `<converter>`: A name of a "conversion method" which should be used to convert the queried value
+/// - `<dest_type>`: A name of a type into which the query value is deserialized. It *MUST* implement the `serde::Deserialize` trait!
 ///
 /// # Compatibility
 /// This macro can be used with arbitrary data structure(to call, `Value`) that supports `get(&self, idx) -> Option<&Value>` method that retrieves a value at `idx`(can be string (retrieving "property"/"field"), or integer (indexing "array"/"sequence")).
@@ -95,6 +118,9 @@ macro_rules! query_value {
     (@trv { $vopt:expr } -> $conv:ident) => {
         $vopt.and_then(|v| v.$conv())
     };
+    (@trv { $vopt:expr } >> $dest:ty) => {
+        $vopt.and_then(|v| <$dest>::deserialize(v.clone()).ok())
+    };
     (@trv { $vopt:expr } . $key:ident $($rest:tt)*) => {
         query_value!(@trv { $vopt.and_then(|v| v.get(stringify!($key))) } $($rest)*)
     };
@@ -114,6 +140,9 @@ macro_rules! query_value {
     };
     (@trv_mut { $vopt:expr } -> $conv:ident) => {
         $vopt.and_then(|v| v.$conv())
+    };
+    (@trv_mut { $vopt:expr } >> $dest:ty) => {
+        $vopt.and_then(|v| <$dest>::deserialize(v.clone()).ok())
     };
     (@trv_mut { $vopt:expr } . $key:ident $($rest:tt)*) => {
         query_value!(@trv_mut { $vopt.and_then(|v| v.get_mut(stringify!($key))) } $($rest)*)
@@ -224,7 +253,6 @@ mod tests {
         #[test]
         fn test_indexing_array() {
             let j = make_sample_json();
-
             let tests = vec![
                 (query_value!(j.arr[0]), json!("first")),
                 (query_value!(j.arr[1]), json!(42)),
@@ -261,6 +289,26 @@ mod tests {
             ];
 
             test_all_true_or_failed_idx!(tests);
+        }
+
+        #[test]
+        fn test_query_and_deserialize() {
+            use serde::Deserialize;
+
+            #[derive(Debug, PartialEq, Deserialize)]
+            struct Person {
+                name: String,
+                age: u8,
+            }
+
+            let j = json!({ "author": {"name": "jiftechnify", "age": 31 } });
+            assert_eq!(
+                query_value!(j.author >> Person),
+                Some(Person {
+                    name: "jiftechnify".into(),
+                    age: 31u8,
+                }),
+            );
         }
 
         #[test]
@@ -394,6 +442,26 @@ mod tests {
 
             test_all_true_or_failed_idx!(tests);
         }
+
+        #[test]
+        fn test_query_and_deserialize() {
+            use serde::Deserialize;
+
+            #[derive(Debug, PartialEq, Deserialize)]
+            struct Person {
+                name: String,
+                age: u8,
+            }
+
+            let y = make_sample_yaml();
+            assert_eq!(
+                query_value!(y.author >> Person),
+                Some(Person {
+                    name: "jiftechnify".into(),
+                    age: 31u8,
+                }),
+            );
+        }
     }
 
     #[cfg(test)]
@@ -490,6 +558,26 @@ mod tests {
             ];
 
             test_all_true_or_failed_idx!(tests);
+        }
+
+        #[test]
+        fn test_query_and_deserialize() {
+            use serde::Deserialize;
+
+            #[derive(Debug, PartialEq, Deserialize)]
+            struct Person {
+                name: String,
+                age: u8,
+            }
+
+            let t = make_sample_toml();
+            assert_eq!(
+                query_value!(t.author >> Person),
+                Some(Person {
+                    name: "jiftechnify".into(),
+                    age: 31u8,
+                }),
+            );
         }
     }
 }

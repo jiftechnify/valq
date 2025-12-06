@@ -7,3 +7,6 @@ seq:
   - first
   - 42
   - hidden: tale
+author:
+  name: jiftechnify
+  age: 31
