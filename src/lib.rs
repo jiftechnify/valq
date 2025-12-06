@@ -1,5 +1,5 @@
 //! # valq
-//! `valq` provides a macro for querying and extracting value from structured data **in very concise manner, like the JavaScript syntax**.
+//! `valq` provides a macro for querying and extracting a value from structured data with **the very concise, JavaScript-like syntax**.
 //!
 //! look & feel:
 //!
@@ -34,14 +34,14 @@
 /// let abyss = query_value!(obj.path.to.matrix[0][1].abyss);
 /// ```
 ///
-/// ## Converting to Specified Type
+/// ## Converting Value with Conversion Methods
 /// ```ignore
-/// // try to convert extracted value to `u64` by `as_u64()` method  on that value.
+/// // try to convert extracted value with `as_u64()` method on that value.
 /// // results in `None` in case of type mismatch
-/// let foo_u64: Option<u64> = query_value!(obj.foo -> u64)
+/// let foo_u64: Option<u64> = query_value!(obj.foo -> as_u64)
 ///
-/// // in case of mutable reference extraction (see below), `as_xxx_mut()` method will be used.
-/// let arr_vec: Option<&mut Vec<Value>> = query_value!(mut obj.arr -> array)
+/// // in case of mutable reference extraction (see below), you may want to use `as_xxx_mut` instead of `as_xxx`.
+/// let arr_vec: Option<&mut Vec<Value>> = query_value!(mut obj.arr -> as_array_mut)
 /// ```
 ///
 /// ## Extracting Mutable Reference to Inner Value
@@ -55,14 +55,14 @@
 ///     let bar: &mut Value = query_value!(mut obj.foo.bar).unwrap();
 ///     *bar = json!({"x": 100, "y": 200});
 /// }
-/// assert_eq!(query_value!(obj.foo.bar.x -> u64), Some(100));
-/// assert_eq!(query_value!(obj.foo.bar.y -> u64), Some(200));
+/// assert_eq!(query_value!(obj.foo.bar.x -> as_u64), Some(100));
+/// assert_eq!(query_value!(obj.foo.bar.y -> as_u64), Some(200));
 /// ```
 ///
 /// # Query Syntax
 ///
 /// ```txt
-/// query_value!(("mut")? <value> ("." <key> | "[" <idx> "]")+ ("->" <to_type>)?)
+/// query_value!(("mut")? <value> ("." <key> | "[" <idx> "]")+ ("->" <converter>)?)
 /// ```
 ///
 /// where:
@@ -72,12 +72,10 @@
 ///     + Any identifiers or `str` literals can be used. You may want to use `str` literals to get property keyed by a string that is invalid identifier in Rust (e.g. starts with digits).
 /// - `<idx>`: An index of array-like stracture to extract
 ///     + Any expressions evaluates to integer value can be used.
-/// - `<to_type>`: A name of "type" queried value should be converted to
+/// - `<converter>`: A name of a "conversion method" which should be used to convert the queried value
 ///
 /// # Compatibility
 /// This macro can be used with arbitrary data structure(to call, `Value`) that supports `get(&self, idx) -> Option<&Value>` method that retrieves a value at `idx`(can be string (retrieving "property"/"field"), or integer (indexing "array"/"sequence")).
-///
-/// Type conversion query `-> xxx` is available if `Value` has conversion method `as_xxx(&self) -> Option<X>`/`as_xxx_mut(&mut self) -> Option<X>`.
 ///
 /// Extracting mutable reference is also supported when `Value` supports `get_mut(&mut self, idx) -> Option<&Value>`.
 ///
@@ -94,8 +92,8 @@ macro_rules! query_value {
     (@trv { $vopt:expr }) => {
         $vopt
     };
-    (@trv { $vopt:expr } -> $to:ident) => {
-        $vopt.and_then(|v| query_value!(@conv v, $to))
+    (@trv { $vopt:expr } -> $conv:ident) => {
+        $vopt.and_then(|v| v.$conv())
     };
     (@trv { $vopt:expr } . $key:ident $($rest:tt)*) => {
         query_value!(@trv { $vopt.and_then(|v| v.get(stringify!($key))) } $($rest)*)
@@ -110,61 +108,12 @@ macro_rules! query_value {
         compile_error!("invalid query syntax for query_value!()")
     };
 
-    /* non-mut conversion */
-    (@conv $v:expr, str) => {
-        $v.as_str()
-    };
-    (@conv $v:expr, u64) => {
-        $v.as_u64()
-    };
-    (@conv $v:expr, i64) => {
-        $v.as_i64()
-    };
-    (@conv $v:expr, f64) => {
-        $v.as_f64()
-    };
-    (@conv $v:expr, bool) => {
-        $v.as_bool()
-    };
-    (@conv $v:expr, null) => {
-        $v.as_null()
-    };
-    (@conv $v:expr, object) => {
-        $v.as_object()
-    };
-    (@conv $v:expr, array) => {
-        $v.as_array()
-    };
-    // for serde_yaml::Value
-    (@conv $v:expr, mapping) => {
-        $v.as_mapping()
-    };
-    (@conv $v:expr, sequence) => {
-        $v.as_sequence()
-    };
-    // for toml::Value
-    (@conv $v:expr, integer) => {
-        $v.as_integer()
-    };
-    (@conv $v:expr, float) => {
-        $v.as_float()
-    };
-    (@conv $v:expr, datetime) => {
-        $v.as_datetime()
-    };
-    (@conv $v:expr, table) => {
-        $v.as_table()
-    };
-    (@conv $v:expr, $to:ident) => {
-        compile_error!(concat!("unsupported target type `", stringify!($to), "` is specified in query_value!()"))
-    };
-
     /* mut traversal */
     (@trv_mut { $vopt:expr }) => {
         $vopt
     };
-    (@trv_mut { $vopt:expr } -> $to:ident) => {
-        $vopt.and_then(|v| query_value!(@conv_mut v, $to))
+    (@trv_mut { $vopt:expr } -> $conv:ident) => {
+        $vopt.and_then(|v| v.$conv())
     };
     (@trv_mut { $vopt:expr } . $key:ident $($rest:tt)*) => {
         query_value!(@trv_mut { $vopt.and_then(|v| v.get_mut(stringify!($key))) } $($rest)*)
@@ -177,31 +126,6 @@ macro_rules! query_value {
     };
     (@trv_mut $($_:tt)*) => {
         compile_error!("invalid query syntax for query_value!()")
-    };
-
-    /* mut conversion */
-    (@conv_mut $v:expr, val) => {
-        Some($v)
-    };
-    (@conv_mut $v:expr, object) => {
-        $v.as_object_mut()
-    };
-    (@conv_mut $v:expr, array) => {
-        $v.as_array_mut()
-    };
-    // for serde_yaml::Value
-    (@conv_mut $v:expr, mapping) => {
-        $v.as_mapping_mut()
-    };
-    (@conv_mut $v:expr, sequence) => {
-        $v.as_sequence_mut()
-    };
-    // for toml::Value
-    (@conv_mut $v:expr, table) => {
-        $v.as_table_mut()
-    };
-    (@conv_mut $v:expr, $to:ident) => {
-        compile_error!(concat!("unsupported target type `", stringify!($to), "` is specified in query_value!()"))
     };
 
     /* entry point */
@@ -250,11 +174,9 @@ mod tests {
 
     #[cfg(test)]
     mod json {
-
         use serde_json::{json, Value};
 
         fn make_sample_json() -> Value {
-            // json!({"foo": { "bar": { "x": 1, "y": 2 }}})
             json!({
                 "str": "s",
                 "nums": {
@@ -318,14 +240,18 @@ mod tests {
             let j = make_sample_json();
 
             let tests = [
-                query_value!(j.str -> str) == Some("s"),
-                query_value!(j.nums.u64 -> u64) == Some(123),
-                query_value!(j.nums.i64 -> i64) == Some(-123),
-                query_value!(j.nums.f64 -> f64) == Some(1.23),
-                query_value!(j.bool -> bool) == Some(true),
-                query_value!(j.null -> null) == Some(()),
-                query_value!(j.obj -> object).unwrap().get("inner").unwrap() == "zzz",
-                query_value!(j.arr -> array).unwrap()
+                query_value!(j.str -> as_str) == Some("s"),
+                query_value!(j.nums.u64 -> as_u64) == Some(123),
+                query_value!(j.nums.i64 -> as_i64) == Some(-123),
+                query_value!(j.nums.f64 -> as_f64) == Some(1.23),
+                query_value!(j.bool -> as_bool) == Some(true),
+                query_value!(j.null -> as_null) == Some(()),
+                query_value!(j.obj -> as_object)
+                    .unwrap()
+                    .get("inner")
+                    .unwrap()
+                    == "zzz",
+                query_value!(j.arr -> as_array).unwrap()
                     == &vec![
                         json!("first"),
                         json!(42),
@@ -353,17 +279,17 @@ mod tests {
 
             // get inner object as Map, then add new prop via insert()
             {
-                let obj = query_value!(mut j.obj -> object).unwrap();
+                let obj = query_value!(mut j.obj -> as_object_mut).unwrap();
                 obj.insert("new_prop".to_string(), json!("yeah"));
             }
-            assert_eq!(query_value!(j.obj.new_prop -> str), Some("yeah"));
+            assert_eq!(query_value!(j.obj.new_prop -> as_str), Some("yeah"));
 
             // get inner array as Vec, then append new value via push()
             {
-                let arr = query_value!(mut j.arr -> array).unwrap();
+                let arr = query_value!(mut j.arr -> as_array_mut).unwrap();
                 arr.push(json!("appended!"));
             }
-            assert_eq!(query_value!(j.arr[4] -> str), Some("appended!"));
+            assert_eq!(query_value!(j.arr[4] -> as_str), Some("appended!"));
         }
 
         #[test]
@@ -455,10 +381,10 @@ mod tests {
             let y = make_sample_yaml();
 
             let tests = [
-                query_value!(y.str -> str) == Some("s"),
-                query_value!(y.num -> u64) == Some(123),
-                query_value!(y.map -> mapping).unwrap().len() == 2,
-                query_value!(y.seq -> sequence).unwrap()
+                query_value!(y.str -> as_str) == Some("s"),
+                query_value!(y.num -> as_u64) == Some(123),
+                query_value!(y.map -> as_mapping).unwrap().len() == 2,
+                query_value!(y.seq -> as_sequence).unwrap()
                     == &vec![
                         Value::String("first".to_string()),
                         Value::Number(42.into()),
@@ -549,18 +475,18 @@ mod tests {
             let t = make_sample_toml();
 
             let tests = [
-                query_value!(t.str -> str) == Some("s"),
-                query_value!(t.int -> integer) == Some(123),
-                query_value!(t.float -> float) == Some(1.23),
-                query_value!(t.date -> datetime).unwrap().to_string()
+                query_value!(t.str -> as_str) == Some("s"),
+                query_value!(t.int -> as_integer) == Some(123),
+                query_value!(t.float -> as_float) == Some(1.23),
+                query_value!(t.date -> as_datetime).unwrap().to_string()
                     == "2021-12-18T12:15:12+09:00",
-                query_value!(t.table -> table).unwrap().len() == 2,
-                query_value!(t.arr -> array).unwrap()
+                query_value!(t.table -> as_table).unwrap().len() == 2,
+                query_value!(t.arr -> as_array).unwrap()
                     == &vec!["first", "second", "third"]
                         .into_iter()
                         .map(|v| Value::String(v.to_string()))
                         .collect::<Vec<_>>(),
-                query_value!(t.arr_of_tables -> array).unwrap().len() == 3,
+                query_value!(t.arr_of_tables -> as_array).unwrap().len() == 3,
             ];
 
             test_all_true_or_failed_idx!(tests);
