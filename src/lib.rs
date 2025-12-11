@@ -78,8 +78,9 @@ pub use paste::paste;
 ///     let bar: &mut Value = query_value!(mut obj.foo.bar).unwrap();
 ///     *bar = json!({"x": 100, "y": 200});
 /// }
-/// assert_eq!(query_value!(obj.foo.bar.x), Some(&json!(100)));
-/// assert_eq!(query_value!(obj.foo.bar.y), Some(&json!(200)));
+/// // see below for `->` syntax
+/// assert_eq!(query_value!(obj.foo.bar.x -> u64), Some(100));
+/// assert_eq!(query_value!(obj.foo.bar.y -> u64), Some(200));
 /// ```
 ///
 /// ## `->`: Converting Value with `as_***()`
@@ -147,18 +148,19 @@ pub use paste::paste;
 /// # Query Syntax
 ///
 /// ```txt
-/// query_value!(("mut")? <value> ("." <key> | "[" <idx> "]")+ ("->" <as_dest> | ">>" <deser_dest>)?)
+/// query_value!(("mut")? <value> ("." <key> | "[" <idx> "]")* ("->" <as_dest> | ">>" <deser_dest>)?)
 /// ```
 ///
 /// where:
 ///
-/// - `<value>`: An expression of structured data to query
-/// - `<key>`: A key of "property"/"field to extract
-///     + Any identifiers or `str` literals can be used. You may want to use `str` literals to get property keyed by a string that is invalid identifier in Rust (e.g. starts with digits).
-/// - `<idx>`: An index of array-like stracture to extract
-///     + Any expressions evaluates to integer value can be used.
-/// - `<as_dest>`: A destination of conversion with `as_***()` / `as_***_mut()` methods
-/// - `<deser_dest>`: A name of a type into which the queried value is deserialized
+/// - `<value>`: An expression evaluates to a structured data to be queried
+/// - `<key>`: A property/field key to extract value from a key-value structure
+/// - `<idx>`: An index to extract value from structure
+///     + For an array-like structure, any expressions evaluates to an integer can be used
+///     + For a key-value structure, any expressions evaluates to a string can be used
+///         * You may want to use this syntax to get a value paired with a non-identifier key (e.g. starts with digits, like `"1st"`)
+/// - `<as_dest>`: A destination type of conversion with `as_***()` / `as_***_mut()` methods
+/// - `<deser_dest>`: A type name into which the queried value is deserialized
 ///     + The specified type *MUST* implement the `serde::Deserialize` trait.
 ///
 /// # Compatibility
