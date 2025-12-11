@@ -5,7 +5,7 @@
 [crates.io shield]: https://img.shields.io/crates/v/valq
 [crates.io link]: https://crates.io/crates/valq
 
-`valq` provides a macro for querying and extracting value from structured data **in very concise manner, like the JavaScript syntax**.
+`valq` provides a macro for querying and extracting an inner value from a structured data **with the JavaScript-ish syntax**.
 
 Look & Feel:
 
@@ -13,15 +13,16 @@ Look & Feel:
 use serde_json::Value;
 use valq::query_value;
 
-let j: Value = ...;
-let deep_val: Option<&Value> = query_value!(j.path.to.value.at.deep);
+let obj: Value = ...;
+let deep_val: Option<&Value> = query_value!(obj.path.to.value.at.deep);
 ```
 
 For now, there is only single macro exported: `query_value`.
 
-## `query_value` macro
+## `query_value!` macro
 A macro for querying inner value of structured data.
-### Basic Usage
+
+### Basic Queries
 ```rust
 // get field `foo` from JSON object `obj`
 let foo = query_value!(obj.foo);
@@ -39,16 +40,6 @@ let head = query_value!(obj.arr[0]);
 let abyss = query_value!(obj.path.to.matrix[0][1].abyss);
 ```
 
-### Converting to Specified Type
-```rust
-// try to convert extracted value to `u64` by `as_u64()` method  on that value.
-// results in `None` in case of type mismatch
-let foo_u64: Option<u64> = query_value!(obj.foo -> u64)
-
-// in case of mutable reference extraction (see below), `as_xxx_mut()` method will be used.
-let arr_vec: Option<&mut Vec<Value>> = query_value!(mut obj.arr -> array)
-```
-
 ### Extracting Mutable Reference to Inner Value
 ```rust
 use serde_json::{json, Value}
@@ -59,6 +50,34 @@ let mut obj = json!({"foo": { "bar": { "x": 1, "y": 2 }}});
     let bar: &mut Value = query_value!(mut obj.foo.bar).unwrap();
     *bar = json!({"x": 100, "y": 200});
 }
+// `->` syntax converts `Value` to typed value (see below)
 assert_eq!(query_value!(obj.foo.bar.x -> u64), Some(100));
 assert_eq!(query_value!(obj.foo.bar.y -> u64), Some(200));
+```
+
+### Converting & Deserializing to Specified Type
+```rust
+// try to convert the queried value into `u64` using `as_u64()` method on that value.
+// results in `None` in case of type mismatch
+let foo_u64: Option<u64> = query_value!(obj.foo -> u64);
+
+// in the context of mutable reference extraction (see below), `as_xxx_mut()` method is used instead.
+let arr_vec: Option<&mut Vec<Value>> = query_value!(mut obj.arr -> array);
+```
+
+```rust
+use serde::Deserialize;
+use serde_json::json;
+use valq::query_value;
+
+#[derive(Debug, PartialEq, Deserialize)]
+struct Person {
+    name: String,
+    age: u8,
+}
+
+let j = json!({"author": {"name": "jiftechnify", "age": 31}});
+
+// try to deserialize the queried value into a value of type `Person`.
+let author: Option<Person> = query_value!(j.author >> Person);
 ```

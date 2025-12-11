@@ -1,53 +1,126 @@
 //! # valq
-//! `valq` provides a macro for querying and extracting a value from structured data with **the very concise, JavaScript-like syntax**.
+//! `valq` provides a macro for querying and extracting an inner value from a structured data **with the JavaScript-ish syntax**.
 //!
 //! look & feel:
 //!
-//! ```ignore
+//! ```
+//! # use serde_json::json;
 //! use serde_json::Value;
 //! use valq::query_value;
 //!
-//! let j: Value = ...;
-//! let deep_val: Option<&Value> = query_value!(j.path.to.value.at.deep);
+//! // let obj: Value = ...;
+//! # let obj = json!({});
+//! let deep_val: Option<&Value> = query_value!(obj.path.to.value.at.deep);
 //! ```
 //!
-//! For now, there is only single macro exported: `query_value`. See document of `query_value` for detailed usage.
+//! For now, there is only single macro exported: `query_value`. Refer to [the `query_value` doc] for detailed usage.
+//!
+//! [the `query_value` doc]: crate::query_value
 
 #[doc(hidden)]
 pub use paste::paste;
 
-/// A macro for querying inner value of structured data.
+/// A macro for querying an inner value of a structured ("JSON-ish") data.
 ///
-/// # Examples
-/// ## Basic Usage
-/// ```ignore
-/// // get field `foo` from JSON object `obj`
-/// let foo = query_value!(obj.foo);
+/// # Usage
+/// ## Basic Queries
 ///
-/// // get nested field `bar` inside object `foo` in JSON object `obj`
+/// With basic queries, `query_value!` extracts a shared reference (`&`) to the inner value by default. Think of it as a function that has following signature:
+///
+/// ```txt
+/// query_value!(query...) -> Option(&Value)
+/// ```
+///
+/// Example:
+///
+/// ```
+/// use valq::query_value;
+/// # use serde_json::{json, Value};
+/// #
+/// # let obj = json!({"foo":{"bar":"bar!"},"arr":[1,2,3],"path":{"to":{"matrix":[[{},{"abyss":"I gaze into you."}],[{},{}]]}}});
+/// # let arr = json!([1,2,3]);
+///
+/// // let obj = json!({ ... });
+/// // let arr = json!([ ... ]);
+///
+/// // get the field `foo` from the JSON-ish object `obj`
+/// let foo: Option<&Value> = query_value!(obj.foo);
+///
+/// // get the nested field `bar` inside `foo` inside `obj`
 /// let bar = query_value!(obj.foo.bar);
 ///
-/// // get head of JSON array 'arr'
+/// // get the first item of the JSON array 'arr'
 /// let head = query_value!(arr[0]);
 ///
-/// // get head of nested JSON array `arr` in JSON object `obj`
+/// // get the first item of the nested JSON array `arr` in `obj`
 /// let head = query_value!(obj.arr[0]);
 ///
 /// // more complex example!
 /// let abyss = query_value!(obj.path.to.matrix[0][1].abyss);
 /// ```
 ///
-/// ## `->`: Converting Value with Conversion Methods
-/// ```ignore
-/// // try to convert extracted value with `as_u64()` method on that value.
-/// // results in `None` in case of type mismatch
-/// let foo_u64: Option<u64> = query_value!(obj.foo -> as_u64)
+/// ## `mut`: Extracting Mutable Reference to Inner Value
 ///
-/// // in case of mutable reference extraction (see below), you may want to use `as_xxx_mut` instead of `as_xxx`.
-/// let arr_vec: Option<&mut Vec<Value>> = query_value!(mut obj.arr -> as_array_mut)
+/// Queries start with `mut` extract the mutable reference (`&mut`) to the inner value instead:
+///
+/// ```txt
+/// query_value!(mut query...) -> Option(&mut Value)
 /// ```
 ///
-/// ## `>>`: Deserializing Value into Any Types that Implement `serde::Deserialize`
+/// Example:
+///
+/// ```
+/// use serde_json::{json, Value};
+/// use valq::query_value;
+///
+/// let mut obj = json!({"foo": { "bar": { "x": 1, "y": 2 }}});
+/// {
+///     let bar: &mut Value = query_value!(mut obj.foo.bar).unwrap();
+///     *bar = json!({"x": 100, "y": 200});
+/// }
+/// assert_eq!(query_value!(obj.foo.bar.x), Some(&json!(100)));
+/// assert_eq!(query_value!(obj.foo.bar.y), Some(&json!(200)));
+/// ```
+///
+/// ## `->`: Converting Value with `as_***()`
+///
+/// Queries end with `-> ***` try to convert the extracted value with `as_***()` method.
+/// In the `mut` context, `as_***_mut()` method is used instead.
+///
+/// ```txt
+/// // assuming your value has the method `as_str(&self) -> Option(&str)`
+/// query_value!(query... -> str) -> Option(&str)
+///
+/// // assuming your value has the method `as_array_mut(&mut self) -> Option(&mut Vec<Value>)`
+/// query_value!(mut query... -> array) -> Option(&mut Vec<Value>)
+/// ```
+///
+/// ```
+/// use serde_json::{json, Value};
+/// use valq::query_value;
+///
+/// let mut obj = json!({"foo": "hello", "arr": [1, 2]});
+///
+/// // try to convert extracted value with `as_u64` method on that value
+/// // results in `None` in case of type mismatch
+/// let foo_str: Option<&str> = query_value!(obj.foo -> str);
+/// assert_eq!(foo_str, Some("hello"));
+///
+/// // `mut` example
+/// let arr_vec: Option<&mut Vec<Value>> = query_value!(mut obj.arr -> array);
+/// assert_eq!(arr_vec, Some(&mut vec![json!(1), json!(2)]));
+/// ```
+///
+/// ## `>>`: Deserializing Value into Any Types Implement `serde::Deserialize` trait
+///
+/// Queries end with `>> Type` try to deserialize the extracted value using `deserialize()` method on the `Type`.
+/// i.e. you can get a value of your `Type` out of the queried value, assuming your `Type` implements `serde::Deserialize`.
+///
+/// ```txt
+/// // assuming `Type` has a method `deserialize()` that is compatible with the extracted value
+/// query_value!(query... >> Type) -> Option(Type)
+/// ```
+///
 /// ```
 /// use serde::Deserialize;
 /// use serde_json::json;
@@ -59,7 +132,7 @@ pub use paste::paste;
 ///     age: u8,
 /// }
 ///
-/// let j = json!({ "author": {"name": "jiftechnify", "age": 31 } });
+/// let j = json!({"author": {"name": "jiftechnify", "age": 31}});
 /// assert_eq!(
 ///     query_value!(j.author >> Person),
 ///     Some(Person {
@@ -69,25 +142,12 @@ pub use paste::paste;
 /// );
 /// ```
 ///
-/// ## `mut`: Extracting Mutable Reference to Inner Value
-/// ```
-/// use serde_json::{json, Value};
-/// use valq::query_value;
-///
-/// let mut obj = json!({"foo": { "bar": { "x": 1, "y": 2 }}});
-/// {
-///     // prefixed `mut` means extracting mutable reference
-///     let bar: &mut Value = query_value!(mut obj.foo.bar).unwrap();
-///     *bar = json!({"x": 100, "y": 200});
-/// }
-/// assert_eq!(query_value!(obj.foo.bar.x -> as_u64), Some(100));
-/// assert_eq!(query_value!(obj.foo.bar.y -> as_u64), Some(200));
-/// ```
+/// Note that deserialization with `>>` involves cloning of the queried value. You may want to use `->` conversion if possible.
 ///
 /// # Query Syntax
 ///
 /// ```txt
-/// query_value!(("mut")? <value> ("." <key> | "[" <idx> "]")+ ("->" <converter> | ">>" <dest_type>)?)
+/// query_value!(("mut")? <value> ("." <key> | "[" <idx> "]")+ ("->" <as_dest> | ">>" <deser_dest>)?)
 /// ```
 ///
 /// where:
@@ -97,11 +157,12 @@ pub use paste::paste;
 ///     + Any identifiers or `str` literals can be used. You may want to use `str` literals to get property keyed by a string that is invalid identifier in Rust (e.g. starts with digits).
 /// - `<idx>`: An index of array-like stracture to extract
 ///     + Any expressions evaluates to integer value can be used.
-/// - `<converter>`: A name of a "conversion method" which should be used to convert the queried value
-/// - `<dest_type>`: A name of a type into which the query value is deserialized. It *MUST* implement the `serde::Deserialize` trait!
+/// - `<as_dest>`: A destination of conversion with `as_***()` / `as_***_mut()` methods
+/// - `<deser_dest>`: A name of a type into which the queried value is deserialized
+///     + The specified type *MUST* implement the `serde::Deserialize` trait.
 ///
 /// # Compatibility
-/// This macro can be used with arbitrary data structure(to call, `Value`) that supports `get(&self, idx) -> Option<&Value>` method that retrieves a value at `idx`(can be string (retrieving "property"/"field"), or integer (indexing "array"/"sequence")).
+/// `query_value!` can be used with arbitrary data structure(to call, `Value`) that supports `get(&self, idx) -> Option<&Value>` method that retrieves a value at `idx`(can be string (retrieving "property"/"field"), or integer (indexing "array"/"sequence")).
 ///
 /// Extracting mutable reference is also supported when `Value` supports `get_mut(&mut self, idx) -> Option<&Value>`.
 ///
@@ -111,7 +172,6 @@ pub use paste::paste;
 /// - [`serde_yaml::Value`](https://docs.rs/serde_yaml/latest/serde_yaml/enum.Value.html)
 /// - [`toml::Value`](https://docs.rs/toml/latest/toml/value/enum.Value.html)
 /// - and more...
-///
 #[macro_export]
 macro_rules! query_value {
     /* non-mut traversal */

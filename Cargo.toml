@@ -4,18 +4,18 @@ version = "0.1.0"
 authors = ["jiftechnify <jiftech.stlfy@gmail.com>"]
 edition = "2021"
 license = "MIT"
-description = "macros for querying and extracting value from structured data by JavaScript-like syntax"
+description = "macros for querying and extracting value from structured data with the JavaScript-ish syntax"
 readme = "README.md"
 repository = "https://github.com/jiftechnify/valq"
 keywords = ["macro", "query", "extract", "json", "serde"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[dependencies]
+paste = "1.0.15"
+
 [dev-dependencies]
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 serde_yaml = "0.9.34"
 toml = "0.9.8"
-
-[dependencies]
-paste = "1.0.15"
