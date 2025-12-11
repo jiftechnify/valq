@@ -65,7 +65,7 @@ macro_rules! doc {
         ///
         /// ## Query Result
         ///
-        /// `query_value!` returns an `Option` as the result of the query.
+        /// `query_value!` returns an `Option` as the result of the query (except when unwrapping operator `??` is used; see below for details).
         ///
         /// Queries can fail for the following reasons. In that case, `query_value!` returns `None`:
         ///
@@ -167,10 +167,34 @@ macro_rules! doc {
         ///
         /// Note that deserialization with `>>` involves cloning of the queried value. You may want to use `->` conversion if possible.
         ///
+        /// ## `??`: Unwarp Query Result with Default Value
+        ///
+        /// You put `?? ...` at the end of the query to unwrap the query result with providing a default value in case of query failure.
+        ///
+        /// - `?? <expr>`: Use the value of`<expr>` as the default.
+        /// - `?? default`: Use `Default::default()` as the default.
+        ///
+        /// This is especilly useful together with `->` or `>>` conversions:
+        ///
+        /// ```
+        /// use serde_json::{json, Value};
+        /// use valq::query_value;
+        ///
+        /// let obj = json!({"foo": {"bar": "not a number"}});
+        /// assert_eq!(query_value!(obj.foo.bar -> str ?? "failed!"), "not a number");
+        /// assert_eq!(query_value!(obj.foo.bar -> u64 ?? 42), 42);
+        /// assert_eq!(query_value!(obj.foo.bar -> u64 ?? default), 0u64); // u64::default()
+        /// ```
+        ///
         /// ## Query Syntax Specification
         ///
         /// ```txt
-        /// query_value!(("mut")? <value> ("." <key> | "[" <idx> "]")* ("->" <as_dest> | ">>" <deser_dest>)?)
+        /// query_value!(
+        ///     ("mut")?
+        ///     <value> ("." <key> | "[" <idx> "]")*
+        ///     ("->" <as_dest> | ">>" <deser_dest>)?
+        ///     ("??" ("default" | <default_expr>))?
+        /// )
         /// ```
         ///
         /// where:
@@ -182,8 +206,9 @@ macro_rules! doc {
         ///     + For a key-value structure, any expressions evaluates to a string can be used
         /// - `<as_dest>`: A destination type of conversion with `as_***()` / `as_***_mut()` methods
         /// - `<deser_dest>`: A type name into which the queried value is deserialized
-        ///     + The specified type *MUST* implement the `serde::Deserialize` trait.
-        ///
+        ///     + The specified type *MUST* implement the `serde::Deserialize` trait
+        /// - `<default_expr>`: An expression for a default value in case of query failure
+        ///     + Instead, you can put `default` keyword in this place to use `Default::default()` as the default value
         /// ## Compatibility
         /// `query_value!` can be used with arbitrary data structure(to call, `Value`) that supports `get(&self, idx) -> Option<&Value>` method that retrieves a value at `idx`(can be string (retrieving "property"/"field"), or integer (indexing "array"/"sequence")).
         ///
@@ -203,55 +228,72 @@ macro_rules! doc {
 // fake implementation illustrates the macro syntax for docs
 #[cfg(doc)]
 doc! {macro_rules! query_value {
-    ($(mut)? $value:tt $(query:tt)*) => {};
-    ($(mut)? $value:tt $(query:tt)* -> $as:ident) => {};
-    ($(mut)? $value:tt $(query:tt)* >> $deser_to:ty) => {};
+    ($(mut)? $value:tt $(query:tt)* $(?? $default:expr)?) => {};
+    ($(mut)? $value:tt $(query:tt)* -> $as:ident $(?? $default:expr)?) => {};
+    ($(mut)? $value:tt $(query:tt)* >> $deser_to:ident $(?? $default:expr)?) => {};
 }}
 
 // actual implementation
 #[cfg(not(doc))]
 doc! {macro_rules! query_value {
     /* non-mut traversal */
-    (@trv { $vopt:expr }) => {
-        $vopt
-    };
-    (@trv { $vopt:expr } -> $dest:ident) => {
-        $crate::__paste! {
-            $vopt.and_then(|v| v.[<as_ $dest>]())
-        }
-    };
-    (@trv { $vopt:expr } >> $dest:ty) => {
-        $vopt.and_then(|v| <$dest>::deserialize(v.clone()).ok())
-    };
+    // traversal step
     (@trv { $vopt:expr } . $key:ident $($rest:tt)*) => {
         query_value!(@trv { $vopt.and_then(|v| v.get(stringify!($key))) } $($rest)*)
     };
     (@trv { $vopt:expr } [ $idx:expr ] $($rest:tt)*) => {
         query_value!(@trv { $vopt.and_then(|v| v.get($idx)) } $($rest)*)
     };
-    (@trv $($_:tt)*) => {
-        compile_error!("invalid query syntax for query_value!()")
+    // conversion step -> convert then jump to finalization step
+    (@trv { $vopt:expr } -> $dest:ident $($rest:tt)*) => {
+        $crate::__paste! {
+            query_value!(@fin { $vopt.and_then(|v| v.[<as_ $dest>]()) } $($rest)*)
+        }
+    };
+    (@trv { $vopt:expr } >> $dest:ident $($rest:tt)*) => {
+        query_value!(@fin { $vopt.and_then(|v| <$dest>::deserialize(v.clone()).ok()) } $($rest)*)
+    };
+    // no conversion -> just jump to finalization step
+    (@trv { $vopt:expr } $($rest:tt)*) => {
+        query_value!(@fin { $vopt } $($rest)*)
     };
 
     /* mut traversal */
-    (@trv_mut { $vopt:expr }) => {
-        $vopt
-    };
-    (@trv_mut { $vopt:expr } -> $dest:ident) => {
-        $crate::__paste! {
-            $vopt.and_then(|v| v.[<as_ $dest _mut>]())
-        }
-    };
-    (@trv_mut { $vopt:expr } >> $dest:ty) => {
-        $vopt.and_then(|v| <$dest>::deserialize(v.clone()).ok())
-    };
+    // traversal step
     (@trv_mut { $vopt:expr } . $key:ident $($rest:tt)*) => {
         query_value!(@trv_mut { $vopt.and_then(|v| v.get_mut(stringify!($key))) } $($rest)*)
     };
     (@trv_mut { $vopt:expr } [ $idx:expr ] $($rest:tt)*) => {
         query_value!(@trv_mut { $vopt.and_then(|v| v.get_mut($idx)) } $($rest)*)
     };
-    (@trv_mut $($_:tt)*) => {
+    // conversion step -> convert then jump to finalization step
+    (@trv_mut { $vopt:expr } -> $dest:ident $($rest:tt)*) => {
+        $crate::__paste! {
+            query_value!(@fin { $vopt.and_then(|v| v.[<as_ $dest _mut>]()) } $($rest)*)
+        }
+    };
+    (@trv_mut { $vopt:expr } >> $dest:ident $($rest:tt)*) => {
+        query_value!(@fin { $vopt.and_then(|v| <$dest>::deserialize(v.clone()).ok()) } $($rest)*)
+    };
+    // no conversion -> just jump to finalization step
+    (@trv_mut { $vopt:expr } $($rest:tt)*) => {
+        query_value!(@fin { $vopt } $($rest)*)
+    };
+
+    /* finalize: handle terminal operators */
+    // ??: "null coalescing"
+    (@fin { $vopt:expr } ?? default) => {
+        $vopt.unwrap_or_default()
+    };
+    (@fin { $vopt:expr } ?? $default:expr) => {
+        $vopt.unwrap_or_else(|| $default)
+    };
+    // no terminal operator
+    (@fin { $vopt:expr }) => {
+        $vopt
+    };
+    // unreachable branch -> report syntax error
+    (@fin $($_:tt)*) => {
         compile_error!("invalid query syntax for query_value!()")
     };
 

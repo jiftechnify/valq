@@ -199,6 +199,66 @@ mod json {
 
         test_all_true_or_failed_idx!(tests);
     }
+
+    #[test]
+    fn test_query_with_unwrapping() {
+        let j = make_sample_json();
+
+        let default_str = json!("default");
+
+        // basic query with ??
+        assert_eq!(query_value!(j.str??(&default_str)), &json!("s"));
+        assert_eq!(query_value!(j.unknown??(&default_str)), &json!("default"));
+
+        // `?? default`
+        assert_eq!(query_value!(j.nums.u64 -> u64 ?? default), 123u64);
+        assert_eq!(query_value!(j.unknown -> u64 ?? default), 0u64); // u64::default()
+        assert_eq!(query_value!(j.unknown -> str ?? default), ""); // &str::default()
+
+        // with conversion (->)
+        assert_eq!(query_value!(j.str -> str ?? "default"), "s");
+        assert_eq!(query_value!(j.nums.u64 -> u64 ?? 999), 123);
+        assert_eq!(
+            query_value!(j.nums.u64 -> str ?? "not a string"),
+            "not a string"
+        ); // type mismatch
+        assert_eq!(query_value!(j.unknown -> str ?? "default"), "default");
+        assert_eq!(query_value!(j.unknown -> str ?? default), ""); // &str::default()
+
+        // with deserialization (>>)
+        use serde::Deserialize;
+
+        #[derive(Debug, PartialEq, Deserialize, Default)]
+        struct Nums {
+            u64: u64,
+            i64: i64,
+            f64: f64,
+        }
+
+        let expected_nums = Nums {
+            u64: 123,
+            i64: -123,
+            f64: 1.23,
+        };
+
+        assert_eq!(query_value!(j.nums >> Nums ?? default), expected_nums);
+        assert_eq!(
+            query_value!(j.unknown >> Nums ?? Nums { u64: 999, i64: -999, f64: 9.99 }),
+            Nums {
+                u64: 999,
+                i64: -999,
+                f64: 9.99
+            }
+        );
+        assert_eq!(
+            query_value!(j.unknown >> Nums ?? default),
+            Nums {
+                u64: 0,
+                i64: 0,
+                f64: 0.0,
+            }
+        );
+    }
 }
 
 #[cfg(test)]

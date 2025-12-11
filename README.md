@@ -81,3 +81,14 @@ let j = json!({"author": {"name": "jiftechnify", "age": 31}});
 // try to deserialize the queried value into a value of type `Person`.
 let author: Option<Person> = query_value!(j.author >> Person);
 ```
+
+### Unwrapping Query Results with Default Values
+```rust
+use serde_json::json;
+use valq::query_value;
+
+let obj = json!({"foo": {"bar": "not a number"}});
+assert_eq!(query_value!(obj.foo.bar -> str ?? "failed!"), "not a number");
+assert_eq!(query_value!(obj.foo.bar -> u64 ?? 42), 42); // explicitly provided default
+assert_eq!(query_value!(obj.foo.bar -> u64 ?? default), 0u64); // using u64::default()
+```
