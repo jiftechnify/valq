@@ -24,17 +24,6 @@ macro_rules! doc {
     ($query_value:item) => {
         /// A macro for querying an inner value of a structured ("JSON-ish") data.
         ///
-        /// # Usage
-        /// ## Basic Queries
-        ///
-        /// With basic queries, `query_value!` extracts a shared reference (`&`) to the inner value by default. Think of it as a function that has following signature:
-        ///
-        /// ```txt
-        /// query_value!(query...) -> Option(&Value)
-        /// ```
-        ///
-        /// Example:
-        ///
         /// ```
         /// use valq::query_value;
         /// # use serde_json::{json, Value};
@@ -59,6 +48,37 @@ macro_rules! doc {
         ///
         /// // more complex example!
         /// let abyss = query_value!(obj.path.to.matrix[0][1].abyss);
+        /// ```
+        ///
+        /// ## Query Notations
+        ///
+        /// You can traverse nested data using JavaScript-ish accessor notaions:
+        ///
+        /// - **Dot notation** (`.field`): Access a property of an "object" (key-value structure) by name
+        /// - **Bracket notation** (`["field"]`): Access a property of an "object", or an element of an "array"-like value by index
+        ///     - With string index, you get access to object properties, similar to dot notation.
+        ///       This is especially useful for keys that are not valid Rust identifiers (e.g. `"1st"`, `"foo-bar"`).
+        ///     - With integer index, you get access to array elements.
+        ///     - Dynamic query: you can place a Rust expression that evaluate to string or integer in the brackets.
+        ///
+        /// Of course, you can chain these accessors arbitrarily to navigate through complex structures.
+        ///
+        /// ## Query Result
+        ///
+        /// `query_value!` returns an `Option` as the result of the query.
+        ///
+        /// Queries can fail for the following reasons. In that case, `query_value!` returns `None`:
+        ///
+        /// - The specified key or index does not exist in the target value
+        /// - Indexing an object (key-value structure) with an integer
+        /// - Indexing an array with a string key
+        ///
+        /// Otherwise, i.e. if your query succeeds, `query_value!` returns the queried value wrapped in `Some`.
+        ///
+        /// With basic queries, `query_value!` extracts a shared reference (`&`) to the inner value by default. Think of it as a function that has following signature:
+        ///
+        /// ```txt
+        /// query_value!(query...) -> Option(&Value)
         /// ```
         ///
         /// ## `mut`: Extracting Mutable Reference to Inner Value
@@ -147,7 +167,7 @@ macro_rules! doc {
         ///
         /// Note that deserialization with `>>` involves cloning of the queried value. You may want to use `->` conversion if possible.
         ///
-        /// # Query Syntax
+        /// ## Query Syntax Specification
         ///
         /// ```txt
         /// query_value!(("mut")? <value> ("." <key> | "[" <idx> "]")* ("->" <as_dest> | ">>" <deser_dest>)?)
@@ -160,12 +180,11 @@ macro_rules! doc {
         /// - `<idx>`: An index to extract value from structure
         ///     + For an array-like structure, any expressions evaluates to an integer can be used
         ///     + For a key-value structure, any expressions evaluates to a string can be used
-        ///         * You may want to use this syntax to get a value paired with a non-identifier key (e.g. starts with digits, like `"1st"`)
         /// - `<as_dest>`: A destination type of conversion with `as_***()` / `as_***_mut()` methods
         /// - `<deser_dest>`: A type name into which the queried value is deserialized
         ///     + The specified type *MUST* implement the `serde::Deserialize` trait.
         ///
-        /// # Compatibility
+        /// ## Compatibility
         /// `query_value!` can be used with arbitrary data structure(to call, `Value`) that supports `get(&self, idx) -> Option<&Value>` method that retrieves a value at `idx`(can be string (retrieving "property"/"field"), or integer (indexing "array"/"sequence")).
         ///
         /// Extracting mutable reference is also supported when `Value` supports `get_mut(&mut self, idx) -> Option<&Value>`.
