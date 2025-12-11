@@ -78,8 +78,9 @@ pub use paste::paste;
 ///     let bar: &mut Value = query_value!(mut obj.foo.bar).unwrap();
 ///     *bar = json!({"x": 100, "y": 200});
 /// }
-/// assert_eq!(query_value!(obj.foo.bar.x), Some(&json!(100)));
-/// assert_eq!(query_value!(obj.foo.bar.y), Some(&json!(200)));
+/// // see below for `->` syntax
+/// assert_eq!(query_value!(obj.foo.bar.x -> u64), Some(100));
+/// assert_eq!(query_value!(obj.foo.bar.y -> u64), Some(200));
 /// ```
 ///
 /// ## `->`: Converting Value with `as_***()`
@@ -147,18 +148,19 @@ pub use paste::paste;
 /// # Query Syntax
 ///
 /// ```txt
-/// query_value!(("mut")? <value> ("." <key> | "[" <idx> "]")+ ("->" <as_dest> | ">>" <deser_dest>)?)
+/// query_value!(("mut")? <value> ("." <key> | "[" <idx> "]")* ("->" <as_dest> | ">>" <deser_dest>)?)
 /// ```
 ///
 /// where:
 ///
-/// - `<value>`: An expression of structured data to query
-/// - `<key>`: A key of "property"/"field to extract
-///     + Any identifiers or `str` literals can be used. You may want to use `str` literals to get property keyed by a string that is invalid identifier in Rust (e.g. starts with digits).
-/// - `<idx>`: An index of array-like stracture to extract
-///     + Any expressions evaluates to integer value can be used.
-/// - `<as_dest>`: A destination of conversion with `as_***()` / `as_***_mut()` methods
-/// - `<deser_dest>`: A name of a type into which the queried value is deserialized
+/// - `<value>`: An expression evaluates to a structured data to be queried
+/// - `<key>`: A property/field key to extract value from a key-value structure
+/// - `<idx>`: An index to extract value from structure
+///     + For an array-like structure, any expressions evaluates to an integer can be used
+///     + For a key-value structure, any expressions evaluates to a string can be used
+///         * You may want to use this syntax to get a value paired with a non-identifier key (e.g. starts with digits, like `"1st"`)
+/// - `<as_dest>`: A destination type of conversion with `as_***()` / `as_***_mut()` methods
+/// - `<deser_dest>`: A type name into which the queried value is deserialized
 ///     + The specified type *MUST* implement the `serde::Deserialize` trait.
 ///
 /// # Compatibility
@@ -189,11 +191,8 @@ macro_rules! query_value {
     (@trv { $vopt:expr } . $key:ident $($rest:tt)*) => {
         query_value!(@trv { $vopt.and_then(|v| v.get(stringify!($key))) } $($rest)*)
     };
-    (@trv { $vopt:expr } . $key:literal $($rest:tt)*) => {
-        query_value!(@trv { $vopt.and_then(|v| v.get($key as &str)) } $($rest)*)
-    };
     (@trv { $vopt:expr } [ $idx:expr ] $($rest:tt)*) => {
-        query_value!(@trv { $vopt.and_then(|v| v.get($idx as usize)) } $($rest)*)
+        query_value!(@trv { $vopt.and_then(|v| v.get($idx)) } $($rest)*)
     };
     (@trv $($_:tt)*) => {
         compile_error!("invalid query syntax for query_value!()")
@@ -214,34 +213,19 @@ macro_rules! query_value {
     (@trv_mut { $vopt:expr } . $key:ident $($rest:tt)*) => {
         query_value!(@trv_mut { $vopt.and_then(|v| v.get_mut(stringify!($key))) } $($rest)*)
     };
-    (@trv_mut { $vopt:expr } . $key:literal $($rest:tt)*) => {
-        query_value!(@trv_mut { $vopt.and_then(|v| v.get_mut($key as &str)) } $($rest)*)
-    };
     (@trv_mut { $vopt:expr } [ $idx:expr ] $($rest:tt)*) => {
-        query_value!(@trv_mut { $vopt.and_then(|v| v.get_mut($idx as usize)) } $($rest)*)
+        query_value!(@trv_mut { $vopt.and_then(|v| v.get_mut($idx)) } $($rest)*)
     };
     (@trv_mut $($_:tt)*) => {
         compile_error!("invalid query syntax for query_value!()")
     };
 
-    /* entry point */
-    ($v:tt . $key:ident $($rest:tt)*) => {
-        query_value!(@trv { $v.get(stringify!($key)) } $($rest)*)
+    /* entry points */
+    (mut $v:tt $($rest:tt)*) => {
+      query_value!(@trv_mut { Some(&mut $v) } $($rest)*)
     };
-    ($v:tt . $key:literal $($rest:tt)*) => {
-        query_value!(@trv { $v.get($key as &str) } $($rest)*)
-    };
-    ($v:tt [ $idx:expr ] $($rest:tt)*) => {
-        query_value!(@trv { $v.get($idx as usize) } $($rest)*)
-    };
-    (mut $v:tt . $key:ident $($rest:tt)*) => {
-        query_value!(@trv_mut { $v.get_mut(stringify!($key)) } $($rest)*)
-    };
-    (mut $v:tt . $key:literal $($rest:tt)*) => {
-        query_value!(@trv_mut { $v.get_mut($key as &str) } $($rest)*)
-    };
-    (mut $v:tt [ $idx:expr ] $($rest:tt)*) => {
-        query_value!(@trv_mut { $v.get_mut($idx as usize) } $($rest)*)
+    ($v:tt $($rest:tt)*) => {
+      query_value!(@trv { Some(&$v) } $($rest)*)
     };
 }
 
@@ -296,7 +280,7 @@ mod tests {
         }
 
         #[test]
-        fn test_query() {
+        fn test_query_with_dot_syntax() {
             let j = make_sample_json();
 
             let tests = vec![
@@ -311,7 +295,21 @@ mod tests {
                     query_value!(j.arr),
                     json!(["first", 42, {"hidden": "tale"}, [0]]),
                 ),
-                (query_value!(j."1st"), json!("prop starts with digit!")),
+                (query_value!(j["1st"]), json!("prop starts with digit!")),
+            ];
+
+            test_is_some_of_expected_val!(tests);
+        }
+
+        #[test]
+        fn test_query_with_bracket_syntax() {
+            let j = make_sample_json();
+
+            let tests = vec![
+                (query_value!(j["str"]), json!("s")),
+                (query_value!(j["nums"]["u64"]), json!(123)),
+                (query_value!(j["nums"].i64), json!(-123)), // mixed query
+                (query_value!(j["1st"]), json!("prop starts with digit!")),
             ];
 
             test_is_some_of_expected_val!(tests);

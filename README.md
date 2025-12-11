@@ -5,7 +5,7 @@
 [crates.io shield]: https://img.shields.io/crates/v/valq
 [crates.io link]: https://crates.io/crates/valq
 
-`valq` provides a macro for querying and extracting an inner value from a structured data **with the JavaScript-ish syntax**.
+`valq` provides a macro for querying an inner value from a structured data **with the JavaScript-ish syntax**.
 
 Look & Feel:
 
