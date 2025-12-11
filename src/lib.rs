@@ -18,7 +18,7 @@
 //! [the `query_value` doc]: crate::query_value
 
 #[doc(hidden)]
-pub use paste::paste;
+pub use paste::paste as __paste;
 
 macro_rules! doc {
     ($query_value:item) => {
@@ -189,6 +189,7 @@ doc! {macro_rules! query_value {
     ($(mut)? $value:tt $(query:tt)* >> $deser_to:ty) => {};
 }}
 
+// actual implementation
 #[cfg(not(doc))]
 doc! {macro_rules! query_value {
     /* non-mut traversal */
@@ -196,7 +197,7 @@ doc! {macro_rules! query_value {
         $vopt
     };
     (@trv { $vopt:expr } -> $dest:ident) => {
-        $crate::paste! {
+        $crate::__paste! {
             $vopt.and_then(|v| v.[<as_ $dest>]())
         }
     };
@@ -218,7 +219,7 @@ doc! {macro_rules! query_value {
         $vopt
     };
     (@trv_mut { $vopt:expr } -> $dest:ident) => {
-        $crate::paste! {
+        $crate::__paste! {
             $vopt.and_then(|v| v.[<as_ $dest _mut>]())
         }
     };
