@@ -13,6 +13,9 @@
 //!
 //! For now, there is only single macro exported: `query_value`. See document of `query_value` for detailed usage.
 
+#[doc(hidden)]
+pub use paste::paste;
+
 /// A macro for querying inner value of structured data.
 ///
 /// # Examples
@@ -115,8 +118,10 @@ macro_rules! query_value {
     (@trv { $vopt:expr }) => {
         $vopt
     };
-    (@trv { $vopt:expr } -> $conv:ident) => {
-        $vopt.and_then(|v| v.$conv())
+    (@trv { $vopt:expr } -> $dest:ident) => {
+        $crate::paste! {
+            $vopt.and_then(|v| v.[<as_ $dest>]())
+        }
     };
     (@trv { $vopt:expr } >> $dest:ty) => {
         $vopt.and_then(|v| <$dest>::deserialize(v.clone()).ok())
@@ -138,8 +143,10 @@ macro_rules! query_value {
     (@trv_mut { $vopt:expr }) => {
         $vopt
     };
-    (@trv_mut { $vopt:expr } -> $conv:ident) => {
-        $vopt.and_then(|v| v.$conv())
+    (@trv_mut { $vopt:expr } -> $dest:ident) => {
+        $crate::paste! {
+            $vopt.and_then(|v| v.[<as_ $dest _mut>]())
+        }
     };
     (@trv_mut { $vopt:expr } >> $dest:ty) => {
         $vopt.and_then(|v| <$dest>::deserialize(v.clone()).ok())
@@ -268,18 +275,14 @@ mod tests {
             let j = make_sample_json();
 
             let tests = [
-                query_value!(j.str -> as_str) == Some("s"),
-                query_value!(j.nums.u64 -> as_u64) == Some(123),
-                query_value!(j.nums.i64 -> as_i64) == Some(-123),
-                query_value!(j.nums.f64 -> as_f64) == Some(1.23),
-                query_value!(j.bool -> as_bool) == Some(true),
-                query_value!(j.null -> as_null) == Some(()),
-                query_value!(j.obj -> as_object)
-                    .unwrap()
-                    .get("inner")
-                    .unwrap()
-                    == "zzz",
-                query_value!(j.arr -> as_array).unwrap()
+                query_value!(j.str -> str) == Some("s"),
+                query_value!(j.nums.u64 -> u64) == Some(123),
+                query_value!(j.nums.i64 -> i64) == Some(-123),
+                query_value!(j.nums.f64 -> f64) == Some(1.23),
+                query_value!(j.bool -> bool) == Some(true),
+                query_value!(j.null -> null) == Some(()),
+                query_value!(j.obj -> object).unwrap().get("inner").unwrap() == "zzz",
+                query_value!(j.arr -> array).unwrap()
                     == &vec![
                         json!("first"),
                         json!(42),
@@ -327,17 +330,17 @@ mod tests {
 
             // get inner object as Map, then add new prop via insert()
             {
-                let obj = query_value!(mut j.obj -> as_object_mut).unwrap();
+                let obj = query_value!(mut j.obj -> object).unwrap();
                 obj.insert("new_prop".to_string(), json!("yeah"));
             }
-            assert_eq!(query_value!(j.obj.new_prop -> as_str), Some("yeah"));
+            assert_eq!(query_value!(j.obj.new_prop -> str), Some("yeah"));
 
             // get inner array as Vec, then append new value via push()
             {
-                let arr = query_value!(mut j.arr -> as_array_mut).unwrap();
+                let arr = query_value!(mut j.arr -> array).unwrap();
                 arr.push(json!("appended!"));
             }
-            assert_eq!(query_value!(j.arr[4] -> as_str), Some("appended!"));
+            assert_eq!(query_value!(j.arr[4] -> str), Some("appended!"));
         }
 
         #[test]
@@ -429,10 +432,10 @@ mod tests {
             let y = make_sample_yaml();
 
             let tests = [
-                query_value!(y.str -> as_str) == Some("s"),
-                query_value!(y.num -> as_u64) == Some(123),
-                query_value!(y.map -> as_mapping).unwrap().len() == 2,
-                query_value!(y.seq -> as_sequence).unwrap()
+                query_value!(y.str -> str) == Some("s"),
+                query_value!(y.num -> u64) == Some(123),
+                query_value!(y.map -> mapping).unwrap().len() == 2,
+                query_value!(y.seq -> sequence).unwrap()
                     == &vec![
                         Value::String("first".to_string()),
                         Value::Number(42.into()),
@@ -543,18 +546,18 @@ mod tests {
             let t = make_sample_toml();
 
             let tests = [
-                query_value!(t.str -> as_str) == Some("s"),
-                query_value!(t.int -> as_integer) == Some(123),
-                query_value!(t.float -> as_float) == Some(1.23),
-                query_value!(t.date -> as_datetime).unwrap().to_string()
+                query_value!(t.str -> str) == Some("s"),
+                query_value!(t.int -> integer) == Some(123),
+                query_value!(t.float -> float) == Some(1.23),
+                query_value!(t.date -> datetime).unwrap().to_string()
                     == "2021-12-18T12:15:12+09:00",
-                query_value!(t.table -> as_table).unwrap().len() == 2,
-                query_value!(t.arr -> as_array).unwrap()
+                query_value!(t.table -> table).unwrap().len() == 2,
+                query_value!(t.arr -> array).unwrap()
                     == &vec!["first", "second", "third"]
                         .into_iter()
                         .map(|v| Value::String(v.to_string()))
                         .collect::<Vec<_>>(),
-                query_value!(t.arr_of_tables -> as_array).unwrap().len() == 3,
+                query_value!(t.arr_of_tables -> array).unwrap().len() == 3,
             ];
 
             test_all_true_or_failed_idx!(tests);
