@@ -189,11 +189,8 @@ macro_rules! query_value {
     (@trv { $vopt:expr } . $key:ident $($rest:tt)*) => {
         query_value!(@trv { $vopt.and_then(|v| v.get(stringify!($key))) } $($rest)*)
     };
-    (@trv { $vopt:expr } . $key:literal $($rest:tt)*) => {
-        query_value!(@trv { $vopt.and_then(|v| v.get($key as &str)) } $($rest)*)
-    };
     (@trv { $vopt:expr } [ $idx:expr ] $($rest:tt)*) => {
-        query_value!(@trv { $vopt.and_then(|v| v.get($idx as usize)) } $($rest)*)
+        query_value!(@trv { $vopt.and_then(|v| v.get($idx)) } $($rest)*)
     };
     (@trv $($_:tt)*) => {
         compile_error!("invalid query syntax for query_value!()")
@@ -214,34 +211,19 @@ macro_rules! query_value {
     (@trv_mut { $vopt:expr } . $key:ident $($rest:tt)*) => {
         query_value!(@trv_mut { $vopt.and_then(|v| v.get_mut(stringify!($key))) } $($rest)*)
     };
-    (@trv_mut { $vopt:expr } . $key:literal $($rest:tt)*) => {
-        query_value!(@trv_mut { $vopt.and_then(|v| v.get_mut($key as &str)) } $($rest)*)
-    };
     (@trv_mut { $vopt:expr } [ $idx:expr ] $($rest:tt)*) => {
-        query_value!(@trv_mut { $vopt.and_then(|v| v.get_mut($idx as usize)) } $($rest)*)
+        query_value!(@trv_mut { $vopt.and_then(|v| v.get_mut($idx)) } $($rest)*)
     };
     (@trv_mut $($_:tt)*) => {
         compile_error!("invalid query syntax for query_value!()")
     };
 
-    /* entry point */
-    ($v:tt . $key:ident $($rest:tt)*) => {
-        query_value!(@trv { $v.get(stringify!($key)) } $($rest)*)
+    /* entry points */
+    (mut $v:tt $($rest:tt)*) => {
+      query_value!(@trv_mut { Some(&mut $v) } $($rest)*)
     };
-    ($v:tt . $key:literal $($rest:tt)*) => {
-        query_value!(@trv { $v.get($key as &str) } $($rest)*)
-    };
-    ($v:tt [ $idx:expr ] $($rest:tt)*) => {
-        query_value!(@trv { $v.get($idx as usize) } $($rest)*)
-    };
-    (mut $v:tt . $key:ident $($rest:tt)*) => {
-        query_value!(@trv_mut { $v.get_mut(stringify!($key)) } $($rest)*)
-    };
-    (mut $v:tt . $key:literal $($rest:tt)*) => {
-        query_value!(@trv_mut { $v.get_mut($key as &str) } $($rest)*)
-    };
-    (mut $v:tt [ $idx:expr ] $($rest:tt)*) => {
-        query_value!(@trv_mut { $v.get_mut($idx as usize) } $($rest)*)
+    ($v:tt $($rest:tt)*) => {
+      query_value!(@trv { Some(&$v) } $($rest)*)
     };
 }
 
@@ -296,7 +278,7 @@ mod tests {
         }
 
         #[test]
-        fn test_query() {
+        fn test_query_with_dot_syntax() {
             let j = make_sample_json();
 
             let tests = vec![
@@ -311,7 +293,21 @@ mod tests {
                     query_value!(j.arr),
                     json!(["first", 42, {"hidden": "tale"}, [0]]),
                 ),
-                (query_value!(j."1st"), json!("prop starts with digit!")),
+                (query_value!(j["1st"]), json!("prop starts with digit!")),
+            ];
+
+            test_is_some_of_expected_val!(tests);
+        }
+
+        #[test]
+        fn test_query_with_bracket_syntax() {
+            let j = make_sample_json();
+
+            let tests = vec![
+                (query_value!(j["str"]), json!("s")),
+                (query_value!(j["nums"]["u64"]), json!(123)),
+                (query_value!(j["nums"].i64), json!(-123)), // mixed query
+                (query_value!(j["1st"]), json!("prop starts with digit!")),
             ];
 
             test_is_some_of_expected_val!(tests);
