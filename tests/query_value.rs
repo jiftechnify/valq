@@ -406,7 +406,6 @@ mod json {
     }
 }
 
-#[cfg(test)]
 mod yaml {
     use super::query_value;
     use serde_yaml::{from_str, Mapping, Sequence, Value};
@@ -498,7 +497,6 @@ mod yaml {
     }
 }
 
-#[cfg(test)]
 mod toml {
     use super::query_value;
     use toml::{
