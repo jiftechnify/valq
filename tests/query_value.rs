@@ -35,7 +35,8 @@ mod json {
             "bool": true,
             "null": null,
             "obj": {
-                "inner": "zzz"
+                "inner": "value",
+                "more": "item"
             },
             "arr": [
                 "first",
@@ -43,6 +44,7 @@ mod json {
                 { "hidden": "tale" },
                 [0]
             ],
+            "num_arr": [0, 1, 2],
             "1st": "prop starts with digit!"
         })
     }
@@ -58,7 +60,11 @@ mod json {
             (query_value!(j.nums.f64), json!(1.23)),
             (query_value!(j.bool), json!(true)),
             (query_value!(j.null), json!(null)),
-            (query_value!(j.obj), json!({"inner": "zzz"})),
+            (
+                query_value!(j.obj),
+                json!({"inner": "value", "more": "item"}),
+            ),
+            (query_value!(j.obj.inner), json!("value")),
             (
                 query_value!(j.arr),
                 json!(["first", 42, {"hidden": "tale"}, [0]]),
@@ -97,6 +103,35 @@ mod json {
     }
 
     #[test]
+    fn test_query_mut() {
+        let mut j = make_sample_json();
+
+        // rewriting value of prop
+        {
+            let obj_inner = query_value!(mut j.obj.inner).unwrap();
+            *obj_inner = json!("just woke up!");
+        }
+        assert_eq!(
+            query_value!(j.obj),
+            Some(&json!({"inner": "just woke up!", "more": "item"}))
+        );
+
+        // get inner object as Map, then add new prop via insert()
+        {
+            let obj = query_value!(mut j.obj -> object).unwrap();
+            obj.insert("new_prop".to_string(), json!("yeah"));
+        }
+        assert_eq!(query_value!(j.obj.new_prop -> str), Some("yeah"));
+
+        // get inner array as Vec, then append new value via push()
+        {
+            let arr = query_value!(mut j.arr -> array).unwrap();
+            arr.push(json!("appended!"));
+        }
+        assert_eq!(query_value!(j.arr[4] -> str), Some("appended!"));
+    }
+
+    #[test]
     fn test_query_and_convert() {
         let j = make_sample_json();
 
@@ -107,7 +142,7 @@ mod json {
             query_value!(j.nums.f64 -> f64) == Some(1.23),
             query_value!(j.bool -> bool) == Some(true),
             query_value!(j.null -> null) == Some(()),
-            query_value!(j.obj -> object).unwrap().get("inner").unwrap() == "zzz",
+            query_value!(j.obj -> object).unwrap().get("inner").unwrap() == "value",
             query_value!(j.arr -> array).unwrap()
                 == &vec![
                     json!("first"),
@@ -122,6 +157,26 @@ mod json {
 
     #[test]
     fn test_query_and_deserialize() {
+        use serde::Deserialize;
+
+        let j = make_sample_json();
+
+        let tests = [
+            query_value!(j.str >> (String)) == Some("s".into()),
+            query_value!(j.str >> (std::string::String)) == Some("s".into()),
+            query_value!(j.str >> String) == Some("s".into()), // parens around type name can be omitted if single identifier
+            query_value!(j.nums.u64 >> u8) == Some(123u8),
+            query_value!(j.nums.i64 >> i8) == Some(-123i8),
+            query_value!(j.nums.i64 >> u8) == None, // fails since can't deserialize negative value into u8
+            query_value!(j.nums.f64 >> f32) == Some(1.23f32),
+            query_value!(j.null >> (())) == Some(()),
+        ];
+
+        test_all_true_or_failed_idx!(tests);
+    }
+
+    #[test]
+    fn test_deserialize_into_custom_struct() {
         use serde::Deserialize;
 
         #[derive(Debug, PartialEq, Deserialize)]
@@ -141,74 +196,14 @@ mod json {
     }
 
     #[test]
-    fn test_query_mut() {
-        let mut j = make_sample_json();
-
-        // rewriting value of prop
-        {
-            let obj_inner = query_value!(mut j.obj.inner).unwrap();
-            *obj_inner = json!("just woke up!");
-        }
-        assert_eq!(
-            query_value!(j.obj),
-            Some(&json!({"inner": "just woke up!"}))
-        );
-
-        // get inner object as Map, then add new prop via insert()
-        {
-            let obj = query_value!(mut j.obj -> object).unwrap();
-            obj.insert("new_prop".to_string(), json!("yeah"));
-        }
-        assert_eq!(query_value!(j.obj.new_prop -> str), Some("yeah"));
-
-        // get inner array as Vec, then append new value via push()
-        {
-            let arr = query_value!(mut j.arr -> array).unwrap();
-            arr.push(json!("appended!"));
-        }
-        assert_eq!(query_value!(j.arr[4] -> str), Some("appended!"));
-    }
-
-    #[test]
-    fn test_query_fail() {
-        let j = make_sample_json();
-
-        let tests = [
-            query_value!(j.unknown),   // non existent property
-            query_value!(j.nums.i128), // non existent property of nested object
-            query_value!(j.obj[0]),    // indexing against non-array value
-            query_value!(j.arr[100]),  // indexing out of bound
-        ]
-        .iter()
-        .map(|res| res.is_none())
-        .collect::<Vec<_>>();
-
-        test_all_true_or_failed_idx!(tests);
-    }
-
-    #[test]
-    fn test_query_fail_mut() {
-        let mut j = make_sample_json();
-
-        let tests = [
-            { query_value!(mut j.unknown).is_none() },
-            { query_value!(mut j.nums.i128).is_none() },
-            { query_value!(mut j.obj[0]).is_none() },
-            { query_value!(mut j.arr[100]).is_none() },
-        ];
-
-        test_all_true_or_failed_idx!(tests);
-    }
-
-    #[test]
     fn test_query_with_unwrapping() {
         let j = make_sample_json();
 
-        let default_str = json!("default");
+        let default_str = &json!("default");
 
         // basic query with ??
-        assert_eq!(query_value!(j.str??(&default_str)), &json!("s"));
-        assert_eq!(query_value!(j.unknown??(&default_str)), &json!("default"));
+        assert_eq!(query_value!(j.str ?? default_str), &json!("s"));
+        assert_eq!(query_value!(j.unknown ?? default_str), &json!("default"));
 
         // `?? default`
         assert_eq!(query_value!(j.nums.u64 -> u64 ?? default), 123u64);
@@ -258,6 +253,156 @@ mod json {
                 f64: 0.0,
             }
         );
+
+        assert_eq!(
+            query_value!(j.num_arr >> (Vec<u8>) ?? default),
+            vec![0, 1, 2]
+        );
+        assert_eq!(
+            query_value!(j.arr >> (Vec<u8>) ?? default),
+            Vec::<u8>::new()
+        );
+        assert_eq!(query_value!(j.arr >> (Vec<u8>) ?? vec![42]), vec![42]);
+    }
+
+    #[test]
+    fn test_deserialize_into_vec() {
+        use serde::Deserialize;
+
+        let j = make_sample_json();
+
+        let tests = vec![
+            query_value!(j.num_arr >> (Vec<u8>)) == Some(vec![0, 1, 2]),
+            query_value!(j.num_arr >> (Vec<u8>) ?? default) == vec![0, 1, 2],
+            query_value!(j.arr >> (Vec<u8>)) == None,
+            query_value!(j.arr >> (Vec<u8>) ?? default) == Vec::<u8>::new(),
+            query_value!(j.arr >> (Vec<u8>) ?? vec![42]) == vec![42],
+        ];
+        test_all_true_or_failed_idx!(tests);
+    }
+
+    #[test]
+    fn test_deserialize_into_hash_map() {
+        use serde::Deserialize;
+        use serde_json::{json, Value};
+        use std::collections::HashMap;
+
+        let j = make_sample_json();
+
+        let exp_json: HashMap<String, Value> = HashMap::from([
+            ("inner".into(), json!("value")),
+            ("more".into(), json!("item")),
+        ]);
+
+        let exp_string: HashMap<String, String> = HashMap::from([
+            ("inner".into(), "value".into()),
+            ("more".into(), "item".into()),
+        ]);
+
+        let tests = vec![
+            query_value!(j.obj >> (HashMap<String, Value>)) == Some(exp_json),
+            query_value!(j.obj >> (HashMap<String, String>)) == Some(exp_string),
+            query_value!(j.obj >> (HashMap<String, u8>)) == None,
+        ];
+        test_all_true_or_failed_idx!(tests);
+    }
+
+    #[test]
+    fn test_query_fail() {
+        let j = make_sample_json();
+
+        let tests = [
+            query_value!(j.unknown),   // non existent property
+            query_value!(j.nums.i128), // non existent property of nested object
+            query_value!(j.obj[0]),    // indexing against non-array value
+            query_value!(j.arr[100]),  // indexing out of bound
+        ]
+        .iter()
+        .map(|res| res.is_none())
+        .collect::<Vec<_>>();
+
+        test_all_true_or_failed_idx!(tests);
+    }
+
+    #[test]
+    fn test_query_fail_mut() {
+        let mut j = make_sample_json();
+
+        let tests = [
+            { query_value!(mut j.unknown).is_none() },
+            { query_value!(mut j.nums.i128).is_none() },
+            { query_value!(mut j.obj[0]).is_none() },
+            { query_value!(mut j.arr[100]).is_none() },
+        ];
+
+        test_all_true_or_failed_idx!(tests);
+    }
+
+    #[test]
+    fn test_query_complex_expressions() {
+        use serde::Deserialize;
+
+        fn gen_value() -> serde_json::Value {
+            json!({ "x": 1 })
+        }
+
+        let tuple = (json!({ "x": 1 }),);
+
+        struct S {
+            value: serde_json::Value,
+        }
+        impl S {
+            fn new() -> Self {
+                Self {
+                    value: json!({ "x": 1 }),
+                }
+            }
+            fn gen_value(&self) -> serde_json::Value {
+                json!({ "x": 1 })
+            }
+        }
+        let s = S::new();
+
+        let v = vec![json!({ "x": 1 })];
+
+        let tests = vec![
+            // querying immediate value
+            query_value!((json!({ "x": 1 })).x) == Some(&json!(1)),
+            query_value!((json!({ "x": 1 })).y ?? default) == &json!(null),
+            query_value!((json!({ "x": 1 })).x -> u64) == Some(1u64),
+            query_value!((json!({ "x": 1 })).x -> str ?? default) == "",
+            query_value!((json!({ "x": 1 })).x -> str ?? "not str") == "not str",
+            query_value!((json!({ "x": 1 })).x >> u8) == Some(1u8),
+            query_value!((json!({ "x": 1 })).x >> String ?? default) == "".to_string(),
+            query_value!((json!({ "x": 1 })).x >> String ?? "deser failed".to_string())
+                == "deser failed".to_string(),
+            // querying immediate value (mut)
+            query_value!(mut (json!({ "x": 1 })).x) == Some(&mut json!(1)),
+            query_value!(mut (json!({ "x": 1 })).x >> u8) == Some(1u8),
+            query_value!(mut (json!({ "x": 1 })).x >> String ?? "deser failed".to_string())
+                == "deser failed".to_string(),
+            // querying return value of function
+            query_value!((gen_value()).x) == Some(&json!(1)),
+            query_value!((gen_value()).x -> u64) == Some(1u64),
+            query_value!((gen_value()).x -> str ?? "not str") == "not str",
+            // querying element of tuple
+            query_value!((tuple.0).x) == Some(&json!(1)),
+            query_value!((tuple.0).x -> u64) == Some(1u64),
+            query_value!((tuple.0).x -> str ?? "not str") == "not str",
+            // querying field of struct
+            query_value!((s.value).x) == Some(&json!(1)),
+            query_value!((s.value).x -> u64) == Some(1u64),
+            query_value!((s.value).x -> str ?? "not str") == "not str",
+            // querying return value of method
+            query_value!((s.gen_value()).x) == Some(&json!(1)),
+            query_value!((s.gen_value()).x -> u64) == Some(1u64),
+            query_value!((s.gen_value()).x -> str ?? "not str") == "not str",
+            // querying indexed value
+            query_value!((v[0]).x) == Some(&json!(1)),
+            query_value!((v[0]).x -> u64) == Some(1u64),
+            query_value!((v[0]).x -> str ?? "not str") == "not str",
+        ];
+        test_all_true_or_failed_idx!(tests);
     }
 }
 
