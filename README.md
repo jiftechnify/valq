@@ -81,7 +81,7 @@ use serde::Deserialize;
 use serde_json::json;
 use valq::query_value;
 
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Deserialize)]
 struct Person {
     name: String,
     age: u8,
