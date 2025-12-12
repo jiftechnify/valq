@@ -37,17 +37,12 @@ macro_rules! doc {
         /// // get the field `foo` from the JSON-ish object `obj`
         /// let foo: Option<&Value> = query_value!(obj.foo);
         ///
-        /// // get the nested field `bar` inside `foo` inside `obj`
-        /// let bar = query_value!(obj.foo.bar);
-        ///
-        /// // get the first item of the JSON array 'arr'
-        /// let head = query_value!(arr[0]);
-        ///
         /// // get the first item of the nested JSON array `arr` in `obj`
         /// let head = query_value!(obj.arr[0]);
         ///
-        /// // more complex example!
+        /// // more complex query, just works!
         /// let abyss = query_value!(obj.path.to.matrix[0][1].abyss);
+        ///
         /// ```
         ///
         /// ## Query Notations
@@ -212,10 +207,12 @@ macro_rules! doc {
         ///     + If the type name contains only a single identifier, you can omit parentheses around it
         /// - `<default_expr>`: An expression for a default value in case of query failure
         ///     + Instead, you can put `default` keyword in this place to use `Default::default()` as the default value
-        /// ## Compatibility
-        /// `query_value!` can be used with arbitrary data structure(to call, `Value`) that supports `get(&self, idx) -> Option<&Value>` method that retrieves a value at `idx`(can be string (retrieving "property"/"field"), or integer (indexing "array"/"sequence")).
         ///
-        /// Extracting mutable reference is also supported when `Value` supports `get_mut(&mut self, idx) -> Option<&Value>`.
+        /// ## Compatibility
+        ///
+        /// `query_value!` can be used with arbitrary data structure(to call, `Value`) that supports `get(&self, idx) -> Option<&Value>` method that retrieves a value at `idx`.
+        ///
+        /// Extracting mutable reference is also supported if your `Value` supports `get_mut(&mut self, idx) -> Option<&Value>`.
         ///
         /// Instances of compatible data structures:
         ///

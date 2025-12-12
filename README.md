@@ -10,11 +10,28 @@
 Look & Feel:
 
 ```rust
-use serde_json::Value;
-use valq::query_value;
+let obj: serde_json::Value = ...;
 
-let obj: Value = ...;
-let deep_val: Option<&Value> = query_value!(obj.path.to.value.at.deep);
+// without valq: tedious and_then() chain...
+let deep = obj
+    .get("path")
+    .and_then(|v| v.get("to"))
+    .and_then(|v| v.get("value"))
+    .and_then(|v| v.get("at"))
+    .and_then(|v| v.get("deep"));
+
+// with valq: very concise and readable!
+use valq::query_value;
+let deep = query_value!(obj.path.to.value.at.deep);
+```
+
+## Installation
+
+Add this to the `Cargo.toml` in your project:
+
+```toml
+[dependencies]
+valq = "*"
 ```
 
 For now, there is only single macro exported: `query_value`.
@@ -27,16 +44,10 @@ A macro for querying, extracting and converting inner value of semi-structured d
 // get field `foo` from JSON object `obj`
 let foo = query_value!(obj.foo);
 
-// get nested field `bar` inside object `foo` in JSON object `obj`
-let bar = query_value!(obj.foo.bar);
-
-// get head of JSON array 'arr'
-let head = query_value!(arr[0]);
-
-// get head of nested JSON array `arr` in JSON object `obj`
+// get the first item of the nested JSON array `arr` in `obj`
 let head = query_value!(obj.arr[0]);
 
-// more complex example!
+// more complex query, just works!
 let abyss = query_value!(obj.path.to.matrix[0][1].abyss);
 ```
 
@@ -92,3 +103,14 @@ assert_eq!(query_value!(obj.foo.bar -> str ?? "failed!"), "not a number");
 assert_eq!(query_value!(obj.foo.bar -> u64 ?? 42), 42); // explicitly provided default
 assert_eq!(query_value!(obj.foo.bar -> u64 ?? default), 0u64); // using u64::default()
 ```
+
+### Compatibility
+The `query_value!` macro can be used with arbitrary data structure(to call, `Value`) that supports `get(&self, idx) -> Option<&Value>` method that retrieves a value at `idx`. 
+
+Extracting mutable reference is also supported if your `Value` supports `get_mut(&mut self, idx) -> Option<&Value>`.
+
+Instances of compatible data structures:
+- [`serde_json::Value`](https://docs.rs/serde_json/latest/serde_json/enum.Value.html)
+- [`serde_yaml::Value`](https://docs.rs/serde_yaml/latest/serde_yaml/enum.Value.html)
+- [`toml::Value`](https://docs.rs/toml/latest/toml/value/enum.Value.html)
+- and more...
