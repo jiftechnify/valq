@@ -136,12 +136,12 @@ macro_rules! doc {
         ///
         /// ## `>>`: Deserializing Value into Any Types Implement `serde::Deserialize` trait
         ///
-        /// Queries end with `>> Type` try to deserialize the extracted value using `deserialize()` method on the `Type`.
-        /// i.e. you can get a value of your `Type` out of the queried value, assuming your `Type` implements `serde::Deserialize`.
+        /// Queries end with `>> (Type)` try to deserialize the extracted value using `deserialize()` method on the `Type`;
+        /// i.e. you can get a value of your `Type` out of the queried value, assuming the `Type` implements `serde::Deserialize`.
         ///
         /// ```txt
-        /// // assuming `Type` has a method `deserialize()` that is compatible with the extracted value
-        /// query_value!(query... >> Type) -> Option(Type)
+        /// // assuming `Type` implements `serde::Deserialize`
+        /// query_value!(query... >> (Type)) -> Option(Type)
         /// ```
         ///
         /// ```
@@ -157,7 +157,7 @@ macro_rules! doc {
         ///
         /// let j = json!({"author": {"name": "jiftechnify", "age": 31}});
         /// assert_eq!(
-        ///     query_value!(j.author >> Person),
+        ///     query_value!(j.author >> (Person)),
         ///     Some(Person {
         ///         name: "jiftechnify".into(),
         ///         age: 31u8,
@@ -165,11 +165,15 @@ macro_rules! doc {
         /// );
         /// ```
         ///
-        /// Note that deserialization with `>>` involves cloning of the queried value. You may want to use `->` conversion if possible.
+        /// A few notes on the `>>` operator:
+        ///
+        /// - Basically, the type name after `>>` must be wrapped with parentheses. As a special case, you can omit that parens only if your type name consists of *a single identifier*, for simplicity.
+        ///     + For example, the query above can be simplified to `j.author >> Person`.
+        /// - Deserialization with `>>` involves cloning of the queried value. You may want to use `->` conversion if possible.
         ///
         /// ## `??`: Unwarp Query Result with Default Value
         ///
-        /// You put `?? ...` at the end of the query to unwrap the query result with providing a default value in case of query failure.
+        /// You put `?? ...` at the very end of the query to unwrap the query result with providing a default value in case of query failure.
         ///
         /// - `?? <expr>`: Use the value of`<expr>` as the default.
         /// - `?? default`: Use `Default::default()` as the default.
@@ -192,7 +196,7 @@ macro_rules! doc {
         /// query_value!(
         ///     ("mut")?
         ///     <value> ("." <key> | "[" <idx> "]")*
-        ///     ("->" <as_dest> | ">>" <deser_dest>)?
+        ///     ("->" <as_dest> | ">>" "(" <deser_dest> ")")?
         ///     ("??" ("default" | <default_expr>))?
         /// )
         /// ```
@@ -207,6 +211,7 @@ macro_rules! doc {
         /// - `<as_dest>`: A destination type of conversion with `as_***()` / `as_***_mut()` methods
         /// - `<deser_dest>`: A type name into which the queried value is deserialized
         ///     + The specified type *MUST* implement the `serde::Deserialize` trait
+        ///     + If the type name contains only a single identifier, you can omit parentheses around it
         /// - `<default_expr>`: An expression for a default value in case of query failure
         ///     + Instead, you can put `default` keyword in this place to use `Default::default()` as the default value
         /// ## Compatibility
@@ -230,7 +235,7 @@ macro_rules! doc {
 doc! {macro_rules! query_value {
     ($(mut)? $value:tt $(query:tt)* $(?? $default:expr)?) => {};
     ($(mut)? $value:tt $(query:tt)* -> $as:ident $(?? $default:expr)?) => {};
-    ($(mut)? $value:tt $(query:tt)* >> $deser_to:ident $(?? $default:expr)?) => {};
+    ($(mut)? $value:tt $(query:tt)* >> ($deser_to:ty) $(?? $default:expr)?) => {};
 }}
 
 // actual implementation
@@ -251,6 +256,9 @@ doc! {macro_rules! query_value {
         }
     };
     (@trv { $vopt:expr } >> $dest:ident $($rest:tt)*) => {
+        query_value!(@fin { $vopt.and_then(|v| <$dest>::deserialize(v.clone()).ok()) } $($rest)*)
+    };
+    (@trv { $vopt:expr } >> ($dest:ty) $($rest:tt)*) => {
         query_value!(@fin { $vopt.and_then(|v| <$dest>::deserialize(v.clone()).ok()) } $($rest)*)
     };
     // no conversion -> just jump to finalization step
@@ -275,20 +283,22 @@ doc! {macro_rules! query_value {
     (@trv_mut { $vopt:expr } >> $dest:ident $($rest:tt)*) => {
         query_value!(@fin { $vopt.and_then(|v| <$dest>::deserialize(v.clone()).ok()) } $($rest)*)
     };
+    (@trv_mut { $vopt:expr } >> ($dest:ty) $($rest:tt)*) => {
+        query_value!(@fin { $vopt.and_then(|v| <$dest>::deserialize(v.clone()).ok()) } $($rest)*)
+    };
     // no conversion -> just jump to finalization step
     (@trv_mut { $vopt:expr } $($rest:tt)*) => {
         query_value!(@fin { $vopt } $($rest)*)
     };
 
-    /* finalize: handle terminal operators */
-    // ??: "null coalescing"
+    /* finalize: handle unwrapping operator */
     (@fin { $vopt:expr } ?? default) => {
         $vopt.unwrap_or_default()
     };
     (@fin { $vopt:expr } ?? $default:expr) => {
         $vopt.unwrap_or_else(|| $default)
     };
-    // no terminal operator
+    // no unwrapping operator
     (@fin { $vopt:expr }) => {
         $vopt
     };

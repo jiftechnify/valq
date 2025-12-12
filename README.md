@@ -79,7 +79,7 @@ struct Person {
 let j = json!({"author": {"name": "jiftechnify", "age": 31}});
 
 // try to deserialize the queried value into a value of type `Person`.
-let author: Option<Person> = query_value!(j.author >> Person);
+let author: Option<Person> = query_value!(j.author >> (Person));
 ```
 
 ### Unwrapping Query Results with Default Values
