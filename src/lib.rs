@@ -1,5 +1,5 @@
 //! # valq
-//! `valq` provides a macro for querying and extracting an inner value from a structured data **with the JavaScript-ish syntax**.
+//! `valq` provides a macro for querying and extracting an inner value from a structured data **with the JavaScript-like syntax**.
 //!
 //! look & feel:
 //!
@@ -52,7 +52,7 @@ macro_rules! doc {
         ///
         /// ## Query Notations
         ///
-        /// You can traverse nested data using JavaScript-ish accessor notaions:
+        /// You can traverse through semi-structured ("JSON-ish") data by chaining JavaScript-like accessor notaions:
         ///
         /// - **Dot notation** (`.field`): Access a property of an "object" (key-value structure) by name
         /// - **Bracket notation** (`["field"]`): Access a property of an "object", or an element of an "array"-like value by index
@@ -60,8 +60,6 @@ macro_rules! doc {
         ///       This is especially useful for keys that are not valid Rust identifiers (e.g. `"1st"`, `"foo-bar"`).
         ///     - With integer index, you get access to array elements.
         ///     - Dynamic query: you can place a Rust expression that evaluate to string or integer in the brackets.
-        ///
-        /// Of course, you can chain these accessors arbitrarily to navigate through complex structures.
         ///
         /// ## Query Result
         ///

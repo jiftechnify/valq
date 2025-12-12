@@ -5,7 +5,7 @@
 [crates.io shield]: https://img.shields.io/crates/v/valq
 [crates.io link]: https://crates.io/crates/valq
 
-`valq` provides a macro for querying an inner value from a structured data **with the JavaScript-ish syntax**.
+`valq` provides a macro for querying semi-structured ("JSON-ish") data **with the JavaScript-like syntax**.
 
 Look & Feel:
 
@@ -20,7 +20,7 @@ let deep_val: Option<&Value> = query_value!(obj.path.to.value.at.deep);
 For now, there is only single macro exported: `query_value`.
 
 ## `query_value!` macro
-A macro for querying inner value of structured data.
+A macro for querying, extracting and converting inner value of semi-structured data.
 
 ### Basic Queries
 ```rust
