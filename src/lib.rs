@@ -1,21 +1,23 @@
 //! # valq
-//! `valq` provides a macro for querying and extracting an inner value from a structured data **with the JavaScript-like syntax**.
-//!
-//! look & feel:
+//! `valq` provides macros for querying and extracting an inner value from a structured data **with the JavaScript-like syntax**.
 //!
 //! ```
 //! # use serde_json::json;
 //! use serde_json::Value;
-//! use valq::query_value;
+//! use valq::{query_value, query_value_result};
 //!
 //! // let obj: Value = ...;
 //! # let obj = json!({});
 //! let deep_val: Option<&Value> = query_value!(obj.path.to.value.at.deep);
+//! let deep_val_res: Result<&Value, valq::Error> = query_value_result!(obj.path.to.value.at.deep);
 //! ```
 //!
-//! For now, there is only single macro exported: `query_value`. Refer to [the `query_value` doc] for detailed usage.
+//! The principal macro provided by this crate is `query_value!`. Read [the `query_value` doc] for detailed usage.
+//!
+//! Also, there is a `Result`-returning variant of `query_value!`, called [`query_value_result!`].
 //!
 //! [the `query_value` doc]: crate::query_value
+//! [`query_value_result!`]: crate::query_value_result
 
 mod error;
 pub use error::Error;
@@ -23,7 +25,7 @@ pub use error::Error;
 #[doc(hidden)]
 pub use paste::paste as __paste;
 
-macro_rules! doc {
+macro_rules! doc_query_value {
     ($query_value:item) => {
         /// A macro for querying an inner value of a structured ("JSON-ish") data.
         ///
@@ -230,7 +232,7 @@ macro_rules! doc {
 
 // fake implementation illustrates the macro syntax for docs
 #[cfg(doc)]
-doc! {macro_rules! query_value {
+doc_query_value! {macro_rules! query_value {
     ($(mut)? $value:tt $(query:tt)* $(?? $default:expr)?) => {};
     ($(mut)? $value:tt $(query:tt)* -> $as:ident $(?? $default:expr)?) => {};
     ($(mut)? $value:tt $(query:tt)* >> ($deser_to:ty) $(?? $default:expr)?) => {};
@@ -238,7 +240,7 @@ doc! {macro_rules! query_value {
 
 // actual implementation
 #[cfg(not(doc))]
-doc! {macro_rules! query_value {
+doc_query_value! {macro_rules! query_value {
     /* non-mut traversal */
     // traversal step
     (@trv { $vopt:expr } . $key:ident $($rest:tt)*) => {
@@ -314,8 +316,52 @@ doc! {macro_rules! query_value {
     };
 }}
 
-#[macro_export]
-macro_rules! query_value_result {
+macro_rules! doc_query_value_result {
+    ($query_value_result:item) => {
+        /// A `Result`-returning variant of [`query_value!`].
+        ///
+        /// See the documentation of [`query_value!`] macro for detailed usage.
+        ///
+        /// If your query fails, this macro returns a [`valq::Error`] describing the failure reason.
+        ///
+        /// ```
+        /// use serde::Deserialize;
+        /// use serde_json::json;
+        /// use valq::{query_value_result, Error};
+        ///
+        /// let obj = json!({"foo": {"bar": 42}});
+        ///
+        /// // Error::ValueNotFoundAtPath: querying non-existent path
+        /// let result = query_value_result!(obj.foo.baz);
+        /// assert!(matches!(result, Err(Error::ValueNotFoundAtPath(_))));
+        ///
+        /// // Error::AsCastFailed: type conversion failure
+        /// let result = query_value_result!(obj.foo.bar -> str);
+        /// assert!(matches!(result, Err(Error::AsCastFailed(_))));
+        ///
+        /// // Error::DeserializationFailed: deserialization failure
+        /// let result = query_value_result!(obj.foo >> (Vec<u8>));
+        /// assert!(matches!(result, Err(Error::DeserializationFailed(_))));
+        /// ```
+        ///
+        /// [`query_value!`]: crate::query_value
+        /// [`valq::Error`]: crate::Error
+        #[macro_export]
+        $query_value_result
+    };
+}
+
+// fake implementation illustrates the macro syntax for docs
+#[cfg(doc)]
+doc_query_value_result! {macro_rules! query_value_result {
+    ($(mut)? $value:tt $(query:tt)* $(?? $default:expr)?) => {};
+    ($(mut)? $value:tt $(query:tt)* -> $as:ident $(?? $default:expr)?) => {};
+    ($(mut)? $value:tt $(query:tt)* >> ($deser_to:ty) $(?? $default:expr)?) => {};
+}}
+
+// actual implementation
+#[cfg(not(doc))]
+doc_query_value_result! {macro_rules! query_value_result {
     /* non-mut traversal */
     // traversal step
     (@trv [$trace:ident] { $vopt:expr } . $key:ident $($rest:tt)*) => {
@@ -447,4 +493,4 @@ macro_rules! query_value_result {
     ($v:tt $($rest:tt)*) => {
         query_value_result!(@trv [trace] { Ok::<_, $crate::Error>(&$v) } $($rest)*)
     };
-}
+}}
