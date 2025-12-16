@@ -34,7 +34,8 @@ Add this to the `Cargo.toml` in your project:
 valq = "*"
 ```
 
-For now, there is only single macro exported: `query_value`.
+The principal macro provided by this crate is `query_value!`.
+Also, there is a `Result`-returning variant of `query_value!`, called `query_value_result!`.
 
 ## `query_value!` macro
 A macro for querying, extracting and converting inner value of semi-structured data.
@@ -61,14 +62,14 @@ let mut obj = json!({"foo": { "bar": { "x": 1, "y": 2 }}});
     let bar: &mut Value = query_value!(mut obj.foo.bar).unwrap();
     *bar = json!({"x": 100, "y": 200});
 }
-// `->` syntax converts `Value` to typed value (see below)
+// with `->` syntax, you can cast `Value` as typed value (see below)
 assert_eq!(query_value!(obj.foo.bar.x -> u64), Some(100));
 assert_eq!(query_value!(obj.foo.bar.y -> u64), Some(200));
 ```
 
-### Converting & Deserializing to Specified Type
+### Casting & Deserializing to Specified Type
 ```rust
-// try to convert the queried value into `u64` using `as_u64()` method on that value.
+// try to cast the queried value into `u64` using `as_u64()` method on that value.
 // results in `None` in case of type mismatch
 let foo_u64: Option<u64> = query_value!(obj.foo -> u64);
 
@@ -104,7 +105,30 @@ assert_eq!(query_value!(obj.foo.bar -> u64 ?? 42), 42); // explicitly provided d
 assert_eq!(query_value!(obj.foo.bar -> u64 ?? default), 0u64); // using u64::default()
 ```
 
-### Compatibility
+## `query_value_result!` macro
+A variant of `query_value!` that returns `Result<T, valq::Error>` instead of `Option<T>`.
+
+```rust
+use serde::Deserialize;
+use serde_json::json;
+use valq::{query_value_result, Error};
+
+let obj = json!({"foo": {"bar": 42}});
+
+// Error::ValueNotFoundAtPath: querying non-existent path
+let result = query_value_result!(obj.foo.baz);
+assert!(matches!(result, Err(Error::ValueNotFoundAtPath(_))));
+
+// Error::AsCastFailed: type casting failure
+let result = query_value_result!(obj.foo.bar -> str);
+assert!(matches!(result, Err(Error::AsCastFailed(_))));
+
+// Error::DeserializationFailed: deserialization failure
+let result = query_value_result!(obj.foo >> (Vec<u8>));
+assert!(matches!(result, Err(Error::DeserializationFailed(_))));
+```
+
+## Compatibility
 The `query_value!` macro can be used with arbitrary data structure(to call, `Value`) that supports `get(&self, idx) -> Option<&Value>` method that retrieves a value at `idx`. 
 
 Extracting mutable reference is also supported if your `Value` supports `get_mut(&mut self, idx) -> Option<&Value>`.

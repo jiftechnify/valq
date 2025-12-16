@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Arbitrary type conversion with `->` operator** ([#46](https://github.com/jiftechnify/valq/pull/46))
+- **Arbitrary type casting with `->` operator** ([#46](https://github.com/jiftechnify/valq/pull/46))
   - No longer limited to hard-coded conversions!
   - Any `as_xxx()` method available on the value type can be used
 
@@ -46,7 +46,7 @@ Initial release with basic query functionality.
   - Dot notation for accessing object properties (`.field`)
   - Bracket notation for array/object indexing (`[index]`)
   - Mutable reference extraction with `mut` prefix
-  - Basic type conversion using `as_***()` methods with `->` operator
+  - Basic type casting using `as_***()` methods with `->` operator
 
 [0.2.0]: https://github.com/jiftechnify/valq/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/jiftechnify/valq/releases/tag/0.1.0

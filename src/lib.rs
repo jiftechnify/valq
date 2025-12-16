@@ -1,26 +1,31 @@
 //! # valq
-//! `valq` provides a macro for querying and extracting an inner value from a structured data **with the JavaScript-like syntax**.
-//!
-//! look & feel:
+//! `valq` provides macros for querying and extracting an inner value from a structured data **with the JavaScript-like syntax**.
 //!
 //! ```
 //! # use serde_json::json;
 //! use serde_json::Value;
-//! use valq::query_value;
+//! use valq::{query_value, query_value_result};
 //!
 //! // let obj: Value = ...;
 //! # let obj = json!({});
 //! let deep_val: Option<&Value> = query_value!(obj.path.to.value.at.deep);
+//! let deep_val_res: Result<&Value, valq::Error> = query_value_result!(obj.path.to.value.at.deep);
 //! ```
 //!
-//! For now, there is only single macro exported: `query_value`. Refer to [the `query_value` doc] for detailed usage.
+//! The principal macro provided by this crate is `query_value!`. Read [the `query_value` doc] for detailed usage.
+//!
+//! Also, there is a `Result`-returning variant of `query_value!`, called [`query_value_result!`].
 //!
 //! [the `query_value` doc]: crate::query_value
+//! [`query_value_result!`]: crate::query_value_result
+
+mod error;
+pub use error::Error;
 
 #[doc(hidden)]
 pub use paste::paste as __paste;
 
-macro_rules! doc {
+macro_rules! doc_query_value {
     ($query_value:item) => {
         /// A macro for querying an inner value of a structured ("JSON-ish") data.
         ///
@@ -98,9 +103,9 @@ macro_rules! doc {
         /// assert_eq!(query_value!(obj.foo.bar.y -> u64), Some(200));
         /// ```
         ///
-        /// ## `->`: Converting Value with `as_***()`
+        /// ## `->`: Cast Value with `as_***()`
         ///
-        /// Queries end with `-> ***` try to convert the extracted value with `as_***()` method.
+        /// Queries end with `-> ***` try to cast the extracted value with `as_***()` method.
         /// In the `mut` context, `as_***_mut()` method is used instead.
         ///
         /// ```txt
@@ -117,7 +122,7 @@ macro_rules! doc {
         ///
         /// let mut obj = json!({"foo": "hello", "arr": [1, 2]});
         ///
-        /// // try to convert extracted value with `as_u64` method on that value
+        /// // try to cast extracted value with `as_u64` method on that value
         /// // results in `None` in case of type mismatch
         /// let foo_str: Option<&str> = query_value!(obj.foo -> str);
         /// assert_eq!(foo_str, Some("hello"));
@@ -162,7 +167,7 @@ macro_rules! doc {
         ///
         /// - Basically, the type name after `>>` must be wrapped with parentheses. As a special case, you can omit that parens only if your type name consists of *a single identifier*, for simplicity.
         ///     + For example, the query above can be simplified to `j.author >> Person`.
-        /// - Deserialization with `>>` involves cloning of the queried value. You may want to use `->` conversion if possible.
+        /// - Deserialization with `>>` involves cloning of the queried value. You may want to use `->` type casting if possible.
         ///
         /// ## `??`: Unwarp Query Result with Default Value
         ///
@@ -201,7 +206,7 @@ macro_rules! doc {
         /// - `<idx>`: An index to extract value from structure
         ///     + For an array-like structure, any expressions evaluates to an integer can be used
         ///     + For a key-value structure, any expressions evaluates to a string can be used
-        /// - `<as_dest>`: A destination type of conversion with `as_***()` / `as_***_mut()` methods
+        /// - `<as_dest>`: A destination type of type casting with `as_***()` / `as_***_mut()` methods
         /// - `<deser_dest>`: A type name into which the queried value is deserialized
         ///     + The specified type *MUST* implement the `serde::Deserialize` trait
         ///     + If the type name contains only a single identifier, you can omit parentheses around it
@@ -227,7 +232,7 @@ macro_rules! doc {
 
 // fake implementation illustrates the macro syntax for docs
 #[cfg(doc)]
-doc! {macro_rules! query_value {
+doc_query_value! {macro_rules! query_value {
     ($(mut)? $value:tt $(query:tt)* $(?? $default:expr)?) => {};
     ($(mut)? $value:tt $(query:tt)* -> $as:ident $(?? $default:expr)?) => {};
     ($(mut)? $value:tt $(query:tt)* >> ($deser_to:ty) $(?? $default:expr)?) => {};
@@ -235,7 +240,7 @@ doc! {macro_rules! query_value {
 
 // actual implementation
 #[cfg(not(doc))]
-doc! {macro_rules! query_value {
+doc_query_value! {macro_rules! query_value {
     /* non-mut traversal */
     // traversal step
     (@trv { $vopt:expr } . $key:ident $($rest:tt)*) => {
@@ -308,5 +313,184 @@ doc! {macro_rules! query_value {
     };
     ($v:tt $($rest:tt)*) => {
         query_value!(@trv { Some(&$v) } $($rest)*)
+    };
+}}
+
+macro_rules! doc_query_value_result {
+    ($query_value_result:item) => {
+        /// A `Result`-returning variant of [`query_value!`].
+        ///
+        /// See the documentation of [`query_value!`] macro for detailed usage.
+        ///
+        /// If your query fails, this macro returns a [`valq::Error`] describing the failure reason.
+        ///
+        /// ```
+        /// use serde::Deserialize;
+        /// use serde_json::json;
+        /// use valq::{query_value_result, Error};
+        ///
+        /// let obj = json!({"foo": {"bar": 42}});
+        ///
+        /// // Error::ValueNotFoundAtPath: querying non-existent path
+        /// let result = query_value_result!(obj.foo.baz);
+        /// assert!(matches!(result, Err(Error::ValueNotFoundAtPath(_))));
+        ///
+        /// // Error::AsCastFailed: type casting failure
+        /// let result = query_value_result!(obj.foo.bar -> str);
+        /// assert!(matches!(result, Err(Error::AsCastFailed(_))));
+        ///
+        /// // Error::DeserializationFailed: deserialization failure
+        /// let result = query_value_result!(obj.foo >> (Vec<u8>));
+        /// assert!(matches!(result, Err(Error::DeserializationFailed(_))));
+        /// ```
+        ///
+        /// [`query_value!`]: crate::query_value
+        /// [`valq::Error`]: crate::Error
+        #[macro_export]
+        $query_value_result
+    };
+}
+
+// fake implementation illustrates the macro syntax for docs
+#[cfg(doc)]
+doc_query_value_result! {macro_rules! query_value_result {
+    ($(mut)? $value:tt $(query:tt)* $(?? $default:expr)?) => {};
+    ($(mut)? $value:tt $(query:tt)* -> $as:ident $(?? $default:expr)?) => {};
+    ($(mut)? $value:tt $(query:tt)* >> ($deser_to:ty) $(?? $default:expr)?) => {};
+}}
+
+// actual implementation
+#[cfg(not(doc))]
+doc_query_value_result! {macro_rules! query_value_result {
+    /* non-mut traversal */
+    // traversal step
+    (@trv [$trace:ident] { $vopt:expr } . $key:ident $($rest:tt)*) => {
+        query_value_result!(@trv [$trace] {
+            $vopt.and_then(|v| {
+                $trace.push_str(stringify!(.$key));
+                v.get(stringify!($key)).ok_or_else(|| $crate::Error::ValueNotFoundAtPath($trace.clone()))
+            })
+        } $($rest)*)
+    };
+    (@trv [$trace:ident] { $vopt:expr } [ $idx:expr ] $($rest:tt)*) => {
+        query_value_result!(@trv [$trace] {
+            $vopt.and_then(|v| {
+                $trace.push_str(format!("[{}]", stringify!($idx)).as_str());
+                v.get($idx).ok_or_else(|| $crate::Error::ValueNotFoundAtPath($trace.clone()))
+            })
+        } $($rest)*)
+    };
+    // conversion step -> convert then jump to finalization step
+    (@trv [$trace:ident] { $vopt:expr } -> $dest:ident $($rest:tt)*) => {
+        $crate::__paste! {
+            query_value_result!(@fin [$trace] {
+                $vopt.and_then(|v| {
+                    let conv_name = format!("as_{}", stringify!($dest));
+                    v.[<as_ $dest>]() .ok_or_else(|| $crate::Error::AsCastFailed(conv_name))
+                })
+            } $($rest)*)
+        }
+    };
+    (@trv [$trace:ident] { $vopt:expr } >> $dest:ident $($rest:tt)*) => {
+        query_value_result!(@fin [$trace] {
+            $vopt.and_then(|v| {
+                <$dest>::deserialize(v.clone()).map_err(|e| $crate::Error::DeserializationFailed(Box::new(e)))
+            })
+        } $($rest)*)
+    };
+    (@trv [$trace:ident] { $vopt:expr } >> ($dest:ty) $($rest:tt)*) => {
+        query_value_result!(@fin [$trace] {
+            $vopt.and_then(|v| {
+                <$dest>::deserialize(v.clone()).map_err(|e| $crate::Error::DeserializationFailed(Box::new(e)))
+            })
+        } $($rest)*)
+    };
+    // no conversion -> just jump to finalization step
+    (@trv [$trace:ident] { $vopt:expr } $($rest:tt)*) => {
+        query_value_result!(@fin [$trace] { $vopt } $($rest)*)
+    };
+
+    /* mut traversal */
+    // traversal step
+    (@trv_mut [$trace:ident] { $vopt:expr } . $key:ident $($rest:tt)*) => {
+        query_value_result!(@trv_mut [$trace] {
+            $vopt.and_then(|v| {
+                $trace.push_str(stringify!(.$key));
+                v.get_mut(stringify!($key)).ok_or_else(|| $crate::Error::ValueNotFoundAtPath($trace.clone()))
+            })
+        } $($rest)*)
+    };
+    (@trv_mut [$trace:ident] { $vopt:expr } [ $idx:expr ] $($rest:tt)*) => {
+        query_value_result!(@trv_mut [$trace] {
+            $vopt.and_then(|v| {
+                $trace.push_str(format!("[{}]", stringify!($idx)).as_str());
+                v.get_mut($idx).ok_or_else(|| $crate::Error::ValueNotFoundAtPath($trace.clone()))
+            })
+        } $($rest)*)
+    };
+    // conversion step -> convert then jump to finalization step
+    (@trv_mut [$trace:ident] { $vopt:expr } -> $dest:ident $($rest:tt)*) => {
+        $crate::__paste! {
+            query_value_result!(@fin [$trace] {
+                $vopt.and_then(|v| {
+                    let conv_name = format!("as_{}_mut", stringify!($dest));
+                    v.[<as_ $dest _mut>]().ok_or_else(|| $crate::Error::AsCastFailed(conv_name))
+                })
+            } $($rest)*)
+        }
+    };
+    (@trv_mut [$trace:ident] { $vopt:expr } >> $dest:ident $($rest:tt)*) => {
+        query_value_result!(@fin [$trace] {
+            $vopt.and_then(|v| {
+                <$dest>::deserialize(v.clone()).map_err(|e| $crate::Error::DeserializationFailed(Box::new(e)))
+            })
+        } $($rest)*)
+    };
+    (@trv_mut [$trace:ident] { $vopt:expr } >> ($dest:ty) $($rest:tt)*) => {
+        query_value_result!(@fin [$trace] {
+            $vopt.and_then(|v| {
+                <$dest>::deserialize(v.clone()).map_err(|e| $crate::Error::DeserializationFailed(Box::new(e)))
+            })
+        } $($rest)*)
+    };
+    // no conversion -> just jump to finalization step
+    (@trv_mut [$trace:ident] { $vopt:expr } $($rest:tt)*) => {
+        query_value_result!(@fin [$trace] { $vopt } $($rest)*)
+    };
+
+    /* finalize: handle unwrapping operator */
+    (@fin [$trace:ident] { $vopt:expr } ?? default) => {
+        {
+            use $crate::Error;
+            let mut $trace = String::new();
+            $vopt.unwrap_or_default()
+        }
+    };
+    (@fin [$trace:ident] { $vopt:expr } ?? $default:expr) => {
+        {
+            use $crate::Error;
+            let mut $trace = String::new();
+            $vopt.unwrap_or_else(|_| $default)
+        }
+    };
+    // no unwrapping operator
+    (@fin [$trace:ident] { $vopt:expr }) => {
+        {
+            use $crate::Error;
+            let mut $trace = String::new();
+            $vopt
+        }
+    };
+    // unreachable branch -> report syntax error
+    (@fin $($_:tt)*) => {
+        compile_error!("invalid query syntax for query_value_result!()")
+    };
+
+    /* entry points */
+    (mut $v:tt $($rest:tt)*) => {
+        query_value_result!(@trv_mut [trace] { Ok::<_, $crate::Error>(&mut $v) } $($rest)*)
+    };
+    ($v:tt $($rest:tt)*) => {
+        query_value_result!(@trv [trace] { Ok::<_, $crate::Error>(&$v) } $($rest)*)
     };
 }}
