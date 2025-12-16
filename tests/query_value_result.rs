@@ -584,7 +584,7 @@ mod json {
 
         // AsCastFailed
         let err = query_value_result!(j.str -> u64).unwrap_err();
-        assert_eq!(err.to_string(), "cast with as_u64() failed");
+        assert_eq!(err.to_string(), "casting with as_u64() failed");
 
         // DeserializationFailed
         let err = query_value_result!(j.nums.i64 >> u8).unwrap_err();
