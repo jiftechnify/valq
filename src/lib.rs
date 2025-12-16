@@ -310,3 +310,172 @@ doc! {macro_rules! query_value {
         query_value!(@trv { Some(&$v) } $($rest)*)
     };
 }}
+
+#[derive(Debug)]
+pub enum QueryValueError {
+    ValueNotFoundAtPath(String),
+    AsCastFailed(String),
+    DeserializationFailed(Box<dyn std::error::Error>),
+}
+
+impl std::fmt::Display for QueryValueError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use QueryValueError as Error;
+        match self {
+            Error::ValueNotFoundAtPath(path) => {
+                write!(f, "value not found at the path: {}", path)
+            }
+            Error::AsCastFailed(conv_name) => {
+                write!(f, "conversion with {}() failed", conv_name)
+            }
+            Error::DeserializationFailed(err) => {
+                write!(f, "failed to deserialize the queried value: {}", err)
+            }
+        }
+    }
+}
+
+impl std::error::Error for QueryValueError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        use QueryValueError as Error;
+        match self {
+            Error::DeserializationFailed(err) => Some(err.as_ref()),
+            _ => None,
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! query_value_result {
+    /* non-mut traversal */
+    // traversal step
+    (@trv [$trace:ident] { $vopt:expr } . $key:ident $($rest:tt)*) => {
+        query_value_result!(@trv [$trace] {
+            $vopt.and_then(|v| {
+                $trace.push_str(stringify!(.$key));
+                v.get(stringify!($key)).ok_or_else(|| $crate::QueryValueError::ValueNotFoundAtPath($trace.clone()))
+            })
+        } $($rest)*)
+    };
+    (@trv [$trace:ident] { $vopt:expr } [ $idx:expr ] $($rest:tt)*) => {
+        query_value_result!(@trv [$trace] {
+            $vopt.and_then(|v| {
+                $trace.push_str(format!("[{}]", stringify!($idx)).as_str());
+                v.get($idx).ok_or_else(|| $crate::QueryValueError::ValueNotFoundAtPath($trace.clone()))
+            })
+        } $($rest)*)
+    };
+    // conversion step -> convert then jump to finalization step
+    (@trv [$trace:ident] { $vopt:expr } -> $dest:ident $($rest:tt)*) => {
+        $crate::__paste! {
+            query_value_result!(@fin [$trace] {
+                $vopt.and_then(|v| {
+                    let conv_name = format!("as_{}", stringify!($dest));
+                    v.[<as_ $dest>]() .ok_or_else(|| $crate::QueryValueError::AsCastFailed(conv_name))
+                })
+            } $($rest)*)
+        }
+    };
+    (@trv [$trace:ident] { $vopt:expr } >> $dest:ident $($rest:tt)*) => {
+        query_value_result!(@fin [$trace] {
+            $vopt.and_then(|v| {
+                <$dest>::deserialize(v.clone()).map_err(|e| $crate::QueryValueError::DeserializationFailed(Box::new(e)))
+            })
+        } $($rest)*)
+    };
+    (@trv [$trace:ident] { $vopt:expr } >> ($dest:ty) $($rest:tt)*) => {
+        query_value_result!(@fin [$trace] {
+            $vopt.and_then(|v| {
+                <$dest>::deserialize(v.clone()).map_err(|e| $crate::QueryValueError::DeserializationFailed(Box::new(e)))
+            })
+        } $($rest)*)
+    };
+    // no conversion -> just jump to finalization step
+    (@trv [$trace:ident] { $vopt:expr } $($rest:tt)*) => {
+        query_value_result!(@fin [$trace] { $vopt } $($rest)*)
+    };
+
+    /* mut traversal */
+    // traversal step
+    (@trv_mut [$trace:ident] { $vopt:expr } . $key:ident $($rest:tt)*) => {
+        query_value_result!(@trv_mut [$trace] {
+            $vopt.and_then(|v| {
+                $trace.push_str(stringify!(.$key));
+                v.get_mut(stringify!($key)).ok_or_else(|| $crate::QueryValueError::ValueNotFoundAtPath($trace.clone()))
+            })
+        } $($rest)*)
+    };
+    (@trv_mut [$trace:ident] { $vopt:expr } [ $idx:expr ] $($rest:tt)*) => {
+        query_value_result!(@trv_mut [$trace] {
+            $vopt.and_then(|v| {
+                $trace.push_str(format!("[{}]", stringify!($idx)).as_str());
+                v.get_mut($idx).ok_or_else(|| $crate::QueryValueError::ValueNotFoundAtPath($trace.clone()))
+            })
+        } $($rest)*)
+    };
+    // conversion step -> convert then jump to finalization step
+    (@trv_mut [$trace:ident] { $vopt:expr } -> $dest:ident $($rest:tt)*) => {
+        $crate::__paste! {
+            query_value_result!(@fin [$trace] {
+                $vopt.and_then(|v| {
+                    let conv_name = format!("as_{}_mut", stringify!($dest));
+                    v.[<as_ $dest _mut>]().ok_or_else(|| $crate::QueryValueError::AsCastFailed(conv_name))
+                })
+            } $($rest)*)
+        }
+    };
+    (@trv_mut [$trace:ident] { $vopt:expr } >> $dest:ident $($rest:tt)*) => {
+        query_value_result!(@fin [$trace] {
+            $vopt.and_then(|v| {
+                <$dest>::deserialize(v.clone()).map_err(|e| $crate::QueryValueError::DeserializationFailed(Box::new(e)))
+            })
+        } $($rest)*)
+    };
+    (@trv_mut [$trace:ident] { $vopt:expr } >> ($dest:ty) $($rest:tt)*) => {
+        query_value_result!(@fin [$trace] {
+            $vopt.and_then(|v| {
+                <$dest>::deserialize(v.clone()).map_err(|e| $crate::QueryValueError::DeserializationFailed(Box::new(e)))
+            })
+        } $($rest)*)
+    };
+    // no conversion -> just jump to finalization step
+    (@trv_mut [$trace:ident] { $vopt:expr } $($rest:tt)*) => {
+        query_value_result!(@fin [$trace] { $vopt } $($rest)*)
+    };
+
+    /* finalize: handle unwrapping operator */
+    (@fin [$trace:ident] { $vopt:expr } ?? default) => {
+        {
+            use $crate::QueryValueError;
+            let mut $trace = String::new();
+            $vopt.unwrap_or_default()
+        }
+    };
+    (@fin [$trace:ident] { $vopt:expr } ?? $default:expr) => {
+        {
+            use $crate::QueryValueError;
+            let mut $trace = String::new();
+            $vopt.unwrap_or_else(|_| $default)
+        }
+    };
+    // no unwrapping operator
+    (@fin [$trace:ident] { $vopt:expr }) => {
+        {
+            use $crate::QueryValueError;
+            let mut $trace = String::new();
+            $vopt
+        }
+    };
+    // unreachable branch -> report syntax error
+    (@fin $($_:tt)*) => {
+        compile_error!("invalid query syntax for query_value_result!()")
+    };
+
+    /* entry points */
+    (mut $v:tt $($rest:tt)*) => {
+        query_value_result!(@trv_mut [trace] { Ok::<_, $crate::QueryValueError>(&mut $v) } $($rest)*)
+    };
+    ($v:tt $($rest:tt)*) => {
+        query_value_result!(@trv [trace] { Ok::<_, $crate::QueryValueError>(&$v) } $($rest)*)
+    };
+}
