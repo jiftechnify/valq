@@ -103,9 +103,9 @@ macro_rules! doc_query_value {
         /// assert_eq!(query_value!(obj.foo.bar.y -> u64), Some(200));
         /// ```
         ///
-        /// ## `->`: Converting Value with `as_***()`
+        /// ## `->`: Cast Value with `as_***()`
         ///
-        /// Queries end with `-> ***` try to convert the extracted value with `as_***()` method.
+        /// Queries end with `-> ***` try to cast the extracted value with `as_***()` method.
         /// In the `mut` context, `as_***_mut()` method is used instead.
         ///
         /// ```txt
@@ -122,7 +122,7 @@ macro_rules! doc_query_value {
         ///
         /// let mut obj = json!({"foo": "hello", "arr": [1, 2]});
         ///
-        /// // try to convert extracted value with `as_u64` method on that value
+        /// // try to cast extracted value with `as_u64` method on that value
         /// // results in `None` in case of type mismatch
         /// let foo_str: Option<&str> = query_value!(obj.foo -> str);
         /// assert_eq!(foo_str, Some("hello"));
@@ -167,7 +167,7 @@ macro_rules! doc_query_value {
         ///
         /// - Basically, the type name after `>>` must be wrapped with parentheses. As a special case, you can omit that parens only if your type name consists of *a single identifier*, for simplicity.
         ///     + For example, the query above can be simplified to `j.author >> Person`.
-        /// - Deserialization with `>>` involves cloning of the queried value. You may want to use `->` conversion if possible.
+        /// - Deserialization with `>>` involves cloning of the queried value. You may want to use `->` type casting if possible.
         ///
         /// ## `??`: Unwarp Query Result with Default Value
         ///
@@ -206,7 +206,7 @@ macro_rules! doc_query_value {
         /// - `<idx>`: An index to extract value from structure
         ///     + For an array-like structure, any expressions evaluates to an integer can be used
         ///     + For a key-value structure, any expressions evaluates to a string can be used
-        /// - `<as_dest>`: A destination type of conversion with `as_***()` / `as_***_mut()` methods
+        /// - `<as_dest>`: A destination type of type casting with `as_***()` / `as_***_mut()` methods
         /// - `<deser_dest>`: A type name into which the queried value is deserialized
         ///     + The specified type *MUST* implement the `serde::Deserialize` trait
         ///     + If the type name contains only a single identifier, you can omit parentheses around it
@@ -335,7 +335,7 @@ macro_rules! doc_query_value_result {
         /// let result = query_value_result!(obj.foo.baz);
         /// assert!(matches!(result, Err(Error::ValueNotFoundAtPath(_))));
         ///
-        /// // Error::AsCastFailed: type conversion failure
+        /// // Error::AsCastFailed: type casting failure
         /// let result = query_value_result!(obj.foo.bar -> str);
         /// assert!(matches!(result, Err(Error::AsCastFailed(_))));
         ///

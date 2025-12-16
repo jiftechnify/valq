@@ -132,7 +132,7 @@ mod json {
     }
 
     #[test]
-    fn test_query_and_convert() {
+    fn test_query_and_cast() {
         let j = make_sample_json();
 
         let tests = [
@@ -216,7 +216,7 @@ mod json {
         assert_eq!(query_value_result!(j.unknown -> u64 ?? default), 0u64); // u64::default()
         assert_eq!(query_value_result!(j.unknown -> str ?? default), ""); // &str::default()
 
-        // with conversion (->)
+        // with casting (->)
         assert_eq!(query_value_result!(j.str -> str ?? "default"), "s");
         assert_eq!(query_value_result!(j.nums.u64 -> u64 ?? 999), 123);
         assert_eq!(
@@ -411,7 +411,7 @@ mod json {
             &json!("tale")
         );
 
-        // With conversion
+        // With casting (->)
         assert_eq!(query_value_result!(j[key] -> str).unwrap(), "s");
         assert_eq!(query_value_result!(j.arr[index] -> str).unwrap(), "first");
 
@@ -451,7 +451,7 @@ mod json {
         }
         assert_eq!(query_value_result!(j.arr[1]).unwrap(), &json!(100));
 
-        // With conversion (mut)
+        // With casting (mut)
         let obj_key = "obj";
         let dynamic_key = "dynamic_key";
         {
@@ -584,7 +584,7 @@ mod json {
 
         // AsCastFailed
         let err = query_value_result!(j.str -> u64).unwrap_err();
-        assert_eq!(err.to_string(), "conversion with as_u64() failed");
+        assert_eq!(err.to_string(), "cast with as_u64() failed");
 
         // DeserializationFailed
         let err = query_value_result!(j.nums.i64 >> u8).unwrap_err();
@@ -661,7 +661,7 @@ mod yaml {
     }
 
     #[test]
-    fn test_query_and_convert() {
+    fn test_query_and_cast() {
         let y = make_sample_yaml();
 
         let tests = [
@@ -715,7 +715,7 @@ mod yaml {
     fn test_error_as_cast_failed() {
         let y = make_sample_yaml();
 
-        // string cannot be converted to u64
+        // string cannot be cast to u64
         let result = query_value_result!(y.str -> u64);
         assert!(matches!(result, Err(Error::AsCastFailed(_))));
     }
@@ -812,7 +812,7 @@ mod toml {
     }
 
     #[test]
-    fn test_query_and_convert() {
+    fn test_query_and_cast() {
         let t = make_sample_toml();
 
         let tests = [
@@ -869,7 +869,7 @@ mod toml {
     fn test_error_as_cast_failed() {
         let t = make_sample_toml();
 
-        // string cannot be converted to integer
+        // string cannot be cast to integer
         let result = query_value_result!(t.str -> integer);
         assert!(matches!(result, Err(Error::AsCastFailed(_))));
     }

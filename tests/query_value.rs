@@ -133,7 +133,7 @@ mod json {
     }
 
     #[test]
-    fn test_query_and_convert() {
+    fn test_query_and_cast() {
         let j = make_sample_json();
 
         let tests = [
@@ -211,7 +211,7 @@ mod json {
         assert_eq!(query_value!(j.unknown -> u64 ?? default), 0u64); // u64::default()
         assert_eq!(query_value!(j.unknown -> str ?? default), ""); // &str::default()
 
-        // with conversion (->)
+        // with casting (->)
         assert_eq!(query_value!(j.str -> str ?? "default"), "s");
         assert_eq!(query_value!(j.nums.u64 -> u64 ?? 999), 123);
         assert_eq!(
@@ -369,7 +369,7 @@ mod json {
             Some(&json!("tale"))
         );
 
-        // With conversion
+        // With casting (->)
         assert_eq!(query_value!(j[key] -> str), Some("s"));
         assert_eq!(query_value!(j.arr[index] -> str), Some("first"));
 
@@ -409,7 +409,7 @@ mod json {
         }
         assert_eq!(query_value!(j.arr[1]), Some(&json!(100)));
 
-        // With conversion (mut)
+        // With casting (mut)
         let obj_key = "obj";
         let dynamic_key = "dynamic_key";
         {
@@ -539,7 +539,7 @@ mod yaml {
     }
 
     #[test]
-    fn test_query_and_convert() {
+    fn test_query_and_cast() {
         let y = make_sample_yaml();
 
         let tests = [
@@ -652,7 +652,7 @@ mod toml {
     }
 
     #[test]
-    fn test_query_and_convert() {
+    fn test_query_and_cast() {
         let t = make_sample_toml();
 
         let tests = [

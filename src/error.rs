@@ -3,7 +3,7 @@
 pub enum Error {
     /// No value found at the specified path.
     ValueNotFoundAtPath(String),
-    /// Conversion with `->` operator (translates to `as_***()`/`as_***_mut()`) failed.
+    /// Casting a value with `->` operator (translates to `as_***()`/`as_***_mut()`) failed.
     AsCastFailed(String),
     /// Deserialization with `>>` operator failed.
     DeserializationFailed(Box<dyn std::error::Error>),
@@ -17,7 +17,7 @@ impl std::fmt::Display for Error {
                 write!(f, "value not found at the path: {}", path)
             }
             Error::AsCastFailed(conv_name) => {
-                write!(f, "conversion with {}() failed", conv_name)
+                write!(f, "casting with {}() failed", conv_name)
             }
             Error::DeserializationFailed(err) => {
                 write!(f, "failed to deserialize the queried value: {}", err)

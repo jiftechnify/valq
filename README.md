@@ -62,14 +62,14 @@ let mut obj = json!({"foo": { "bar": { "x": 1, "y": 2 }}});
     let bar: &mut Value = query_value!(mut obj.foo.bar).unwrap();
     *bar = json!({"x": 100, "y": 200});
 }
-// `->` syntax converts `Value` to typed value (see below)
+// with `->` syntax, you can cast `Value` as typed value (see below)
 assert_eq!(query_value!(obj.foo.bar.x -> u64), Some(100));
 assert_eq!(query_value!(obj.foo.bar.y -> u64), Some(200));
 ```
 
-### Converting & Deserializing to Specified Type
+### Casting & Deserializing to Specified Type
 ```rust
-// try to convert the queried value into `u64` using `as_u64()` method on that value.
+// try to cast the queried value into `u64` using `as_u64()` method on that value.
 // results in `None` in case of type mismatch
 let foo_u64: Option<u64> = query_value!(obj.foo -> u64);
 
@@ -119,7 +119,7 @@ let obj = json!({"foo": {"bar": 42}});
 let result = query_value_result!(obj.foo.baz);
 assert!(matches!(result, Err(Error::ValueNotFoundAtPath(_))));
 
-// Error::AsCastFailed: type conversion failure
+// Error::AsCastFailed: type casting failure
 let result = query_value_result!(obj.foo.bar -> str);
 assert!(matches!(result, Err(Error::AsCastFailed(_))));
 
