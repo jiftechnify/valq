@@ -5,7 +5,8 @@ macro_rules! test_is_some_of_expected_val {
         for (res, exp) in $tests {
             if let Some(act) = res {
                 assert_eq!(act, &exp)
-            } else {
+            }
+            else {
                 panic!("expect Some(...) but actually None")
             }
         }
@@ -53,7 +54,7 @@ mod json {
     fn test_query_with_dot_syntax() {
         let j = make_sample_json();
 
-        let tests = vec![
+        let tests = [
             (query_value!(j.str), json!("s")),
             (query_value!(j.nums.u64), json!(123)),
             (query_value!(j.nums.i64), json!(-123)),
@@ -79,7 +80,7 @@ mod json {
     fn test_query_with_bracket_syntax() {
         let j = make_sample_json();
 
-        let tests = vec![
+        let tests = [
             (query_value!(j["str"]), json!("s")),
             (query_value!(j["nums"]["u64"]), json!(123)),
             (query_value!(j["nums"].i64), json!(-123)), // mixed query
@@ -92,7 +93,7 @@ mod json {
     #[test]
     fn test_indexing_array() {
         let j = make_sample_json();
-        let tests = vec![
+        let tests = [
             (query_value!(j.arr[0]), json!("first")),
             (query_value!(j.arr[1]), json!(42)),
             (query_value!(j.arr[2].hidden), json!("tale")), // more complex query!
@@ -271,7 +272,7 @@ mod json {
 
         let j = make_sample_json();
 
-        let tests = vec![
+        let tests = [
             query_value!(j.num_arr >> (Vec<u8>)) == Some(vec![0, 1, 2]),
             query_value!(j.num_arr >> (Vec<u8>) ?? default) == vec![0, 1, 2],
             query_value!(j.arr >> (Vec<u8>)) == None,
@@ -299,7 +300,7 @@ mod json {
             ("more".into(), "item".into()),
         ]);
 
-        let tests = vec![
+        let tests = [
             query_value!(j.obj >> (HashMap<String, Value>)) == Some(exp_json),
             query_value!(j.obj >> (HashMap<String, String>)) == Some(exp_string),
             query_value!(j.obj >> (HashMap<String, u8>)) == None,
@@ -339,6 +340,86 @@ mod json {
     }
 
     #[test]
+    fn test_query_with_dynamic_indices() {
+        let j = make_sample_json();
+
+        // Dynamic string key
+        let key = "str";
+        assert_eq!(query_value!(j[key]), Some(&json!("s")));
+
+        let obj_key = "obj";
+        let inner_key = "inner";
+        assert_eq!(query_value!(j[obj_key][inner_key]), Some(&json!("value")));
+
+        // Dynamic integer index
+        let index = 0;
+        assert_eq!(query_value!(j.arr[index]), Some(&json!("first")));
+
+        let arr_index = 1;
+        assert_eq!(query_value!(j.arr[arr_index]), Some(&json!(42)));
+
+        // Mix of static and dynamic
+        let key2 = "nums";
+        assert_eq!(query_value!(j[key2].u64), Some(&json!(123)));
+
+        // Dynamic expression
+        let base_index = 1;
+        assert_eq!(
+            query_value!(j.arr[base_index + 1].hidden),
+            Some(&json!("tale"))
+        );
+
+        // With conversion
+        assert_eq!(query_value!(j[key] -> str), Some("s"));
+        assert_eq!(query_value!(j.arr[index] -> str), Some("first"));
+
+        // With unwrapping operator
+        let missing_key = "missing";
+        let fallback = json!("fallback");
+        assert_eq!(
+            query_value!(j[missing_key]?? & fallback),
+            &json!("fallback")
+        );
+
+        let out_of_bounds = 999;
+        let oob_val = json!("oob");
+        assert_eq!(
+            query_value!(j.arr[out_of_bounds]?? & oob_val),
+            &json!("oob")
+        );
+    }
+
+    #[test]
+    fn test_query_with_dynamic_indices_mut() {
+        let mut j = make_sample_json();
+
+        // Dynamic string key (mut)
+        let key = "str";
+        {
+            let val = query_value!(mut j[key]).unwrap();
+            *val = json!("modified");
+        }
+        assert_eq!(query_value!(j.str), Some(&json!("modified")));
+
+        // Dynamic integer index (mut)
+        let index = 1;
+        {
+            let val = query_value!(mut j.arr[index]).unwrap();
+            *val = json!(100);
+        }
+        assert_eq!(query_value!(j.arr[1]), Some(&json!(100)));
+
+        // With conversion (mut)
+        let obj_key = "obj";
+        let dynamic_key = "dynamic_key";
+        {
+            let obj = query_value!(mut j[obj_key] -> object).unwrap();
+            obj.insert("dynamic_key".to_string(), json!("added"));
+        }
+        assert_eq!(query_value!(j.obj[dynamic_key]), Some(&json!("added")));
+    }
+
+    #[test]
     fn test_query_complex_expressions() {
         use serde::Deserialize;
 
@@ -365,7 +446,7 @@ mod json {
 
         let v = vec![json!({ "x": 1 })];
 
-        let tests = vec![
+        let tests = [
             // querying immediate value
             query_value!((json!({ "x": 1 })).x) == Some(&json!(1)),
             query_value!((json!({ "x": 1 })).y ?? default) == &json!(null),
@@ -445,7 +526,7 @@ mod yaml {
     fn test_query() {
         let y = make_sample_yaml();
 
-        let tests = vec![
+        let tests = [
             (query_value!(y.str), Value::String("s".to_string())),
             (query_value!(y.num), Value::Number(123.into())),
             (query_value!(y.map), Value::Mapping(sample_mapping())),
@@ -543,7 +624,7 @@ mod toml {
     fn test_query() {
         let t = make_sample_toml();
 
-        let tests = vec![
+        let tests = [
             (query_value!(t.str), Value::String("s".to_string())),
             (query_value!(t.int), Value::Integer(123)),
             (query_value!(t.float), Value::Float(1.23)),

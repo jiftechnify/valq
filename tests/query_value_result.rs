@@ -378,6 +378,92 @@ mod json {
         test_all_true_or_failed_idx!(tests);
     }
 
+    #[test]
+    fn test_query_with_dynamic_indices() {
+        let j = make_sample_json();
+
+        // Dynamic string key
+        let key = "str";
+        assert_eq!(query_value_result!(j[key]).unwrap(), &json!("s"));
+
+        let obj_key = "obj";
+        let inner_key = "inner";
+        assert_eq!(
+            query_value_result!(j[obj_key][inner_key]).unwrap(),
+            &json!("value")
+        );
+
+        // Dynamic integer index
+        let index = 0;
+        assert_eq!(query_value_result!(j.arr[index]).unwrap(), &json!("first"));
+
+        let arr_index = 1;
+        assert_eq!(query_value_result!(j.arr[arr_index]).unwrap(), &json!(42));
+
+        // Mix of static and dynamic
+        let key2 = "nums";
+        assert_eq!(query_value_result!(j[key2].u64).unwrap(), &json!(123));
+
+        // Dynamic expression
+        let base_index = 1;
+        assert_eq!(
+            query_value_result!(j.arr[base_index + 1].hidden).unwrap(),
+            &json!("tale")
+        );
+
+        // With conversion
+        assert_eq!(query_value_result!(j[key] -> str).unwrap(), "s");
+        assert_eq!(query_value_result!(j.arr[index] -> str).unwrap(), "first");
+
+        // With unwrapping operator
+        let missing_key = "missing";
+        let fallback = json!("fallback");
+        assert_eq!(
+            query_value_result!(j[missing_key]?? & fallback),
+            &json!("fallback")
+        );
+
+        let out_of_bounds = 999;
+        let oob_val = json!("oob");
+        assert_eq!(
+            query_value_result!(j.arr[out_of_bounds]?? & oob_val),
+            &json!("oob")
+        );
+    }
+
+    #[test]
+    fn test_query_with_dynamic_indices_mut() {
+        let mut j = make_sample_json();
+
+        // Dynamic string key (mut)
+        let key = "str";
+        {
+            let val = query_value_result!(mut j[key]).unwrap();
+            *val = json!("modified");
+        }
+        assert_eq!(query_value_result!(j.str).unwrap(), &json!("modified"));
+
+        // Dynamic integer index (mut)
+        let index = 1;
+        {
+            let val = query_value_result!(mut j.arr[index]).unwrap();
+            *val = json!(100);
+        }
+        assert_eq!(query_value_result!(j.arr[1]).unwrap(), &json!(100));
+
+        // With conversion (mut)
+        let obj_key = "obj";
+        let dynamic_key = "dynamic_key";
+        {
+            let obj = query_value_result!(mut j[obj_key] -> object).unwrap();
+            obj.insert("dynamic_key".to_string(), json!("added"));
+        }
+        assert_eq!(
+            query_value_result!(j.obj[dynamic_key]).unwrap(),
+            &json!("added")
+        );
+    }
+
     // Error case tests - ValueNotFoundAtPath
     #[test]
     fn test_error_value_not_found() {
