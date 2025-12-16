@@ -1,4 +1,4 @@
-use valq::{query_value_result, QueryValueError};
+use valq::{query_value_result, Error};
 
 macro_rules! test_all_true_or_failed_idx {
     ($test_res:expr) => {
@@ -9,7 +9,7 @@ macro_rules! test_all_true_or_failed_idx {
 }
 
 mod json {
-    use super::{query_value_result, QueryValueError};
+    use super::{query_value_result, Error};
     use serde_json::{json, Value};
 
     fn make_sample_json() -> Value {
@@ -481,7 +481,7 @@ mod json {
         ];
 
         for (result, expected_path) in tests {
-            if let Err(QueryValueError::ValueNotFoundAtPath(path)) = result {
+            if let Err(Error::ValueNotFoundAtPath(path)) = result {
                 assert_eq!(path, expected_path);
             }
             else {
@@ -509,7 +509,7 @@ mod json {
         ];
 
         for (result, expected_conv_name) in tests {
-            if let QueryValueError::AsCastFailed(conv_name) = result {
+            if let Error::AsCastFailed(conv_name) = result {
                 assert_eq!(conv_name, expected_conv_name);
             }
             else {
@@ -535,7 +535,7 @@ mod json {
         ];
 
         for (result, expected_conv_name) in tests {
-            if let QueryValueError::AsCastFailed(conv_name) = result {
+            if let Error::AsCastFailed(conv_name) = result {
                 assert_eq!(conv_name, expected_conv_name);
             }
             else {
@@ -567,7 +567,7 @@ mod json {
         ];
 
         for result in tests {
-            assert!(matches!(result, QueryValueError::DeserializationFailed(_)));
+            assert!(matches!(result, Error::DeserializationFailed(_)));
         }
     }
 
@@ -595,7 +595,7 @@ mod json {
 }
 
 mod yaml {
-    use super::{query_value_result, QueryValueError};
+    use super::{query_value_result, Error};
     use serde_yaml::{from_str, Mapping, Sequence, Value};
 
     fn make_sample_yaml() -> Value {
@@ -705,11 +705,8 @@ mod yaml {
         let y = make_sample_yaml();
 
         let result = query_value_result!(y.unknown);
-        assert!(matches!(
-            result,
-            Err(QueryValueError::ValueNotFoundAtPath(_))
-        ));
-        if let Err(QueryValueError::ValueNotFoundAtPath(path)) = result {
+        assert!(matches!(result, Err(Error::ValueNotFoundAtPath(_))));
+        if let Err(Error::ValueNotFoundAtPath(path)) = result {
             assert_eq!(path, ".unknown");
         }
     }
@@ -720,7 +717,7 @@ mod yaml {
 
         // string cannot be converted to u64
         let result = query_value_result!(y.str -> u64);
-        assert!(matches!(result, Err(QueryValueError::AsCastFailed(_))));
+        assert!(matches!(result, Err(Error::AsCastFailed(_))));
     }
 
     #[test]
@@ -731,15 +728,12 @@ mod yaml {
 
         // string into u8
         let result = query_value_result!(y.str >> u8);
-        assert!(matches!(
-            result,
-            Err(QueryValueError::DeserializationFailed(_))
-        ));
+        assert!(matches!(result, Err(Error::DeserializationFailed(_))));
     }
 }
 
 mod toml {
-    use super::{query_value_result, QueryValueError};
+    use super::{query_value_result, Error};
     use toml::{
         from_str,
         value::{Array, Table},
@@ -865,11 +859,8 @@ mod toml {
         let t = make_sample_toml();
 
         let result = query_value_result!(t.unknown);
-        assert!(matches!(
-            result,
-            Err(QueryValueError::ValueNotFoundAtPath(_))
-        ));
-        if let Err(QueryValueError::ValueNotFoundAtPath(path)) = result {
+        assert!(matches!(result, Err(Error::ValueNotFoundAtPath(_))));
+        if let Err(Error::ValueNotFoundAtPath(path)) = result {
             assert_eq!(path, ".unknown");
         }
     }
@@ -880,7 +871,7 @@ mod toml {
 
         // string cannot be converted to integer
         let result = query_value_result!(t.str -> integer);
-        assert!(matches!(result, Err(QueryValueError::AsCastFailed(_))));
+        assert!(matches!(result, Err(Error::AsCastFailed(_))));
     }
 
     #[test]
@@ -891,9 +882,6 @@ mod toml {
 
         // string into u8
         let result = query_value_result!(t.str >> u8);
-        assert!(matches!(
-            result,
-            Err(QueryValueError::DeserializationFailed(_))
-        ));
+        assert!(matches!(result, Err(Error::DeserializationFailed(_))));
     }
 }
