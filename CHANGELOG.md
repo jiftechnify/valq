@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-12-17
+
+### Added
+
+- **`query_value_result!` macro** for Result-returning queries ([#56](https://github.com/jiftechnify/valq/pull/56))
+  - A new flavor of `query_value!` that returns a `valq::Result` instead of an `Option`
+  - Enables better error handling for queries where keys or indices might not exist
+  - Supports all the same query syntax as `query_value!`
+
+- **`transpose_tuple!` helper macro** for transposing tuples of Results/Options ([#58](https://github.com/jiftechnify/valq/pull/58))
+  - Convert `(Option<A>, Option<B>, ...)` into `Option<(A, B, ...)>`
+  - Convert `(Result<A>, Result<B>, ...)` into `Result<(A, B, ...)>`
+  - Particularly useful when combining multiple `query_value!`/`query_value_result!` calls
+
 ## [0.2.0] - 2025-12-12
 
 ### Added
@@ -48,5 +62,6 @@ Initial release with basic query functionality.
   - Mutable reference extraction with `mut` prefix
   - Basic type casting using `as_***()` methods with `->` operator
 
+[0.3.0]: https://github.com/jiftechnify/valq/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/jiftechnify/valq/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/jiftechnify/valq/releases/tag/0.1.0
