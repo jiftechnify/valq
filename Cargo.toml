@@ -7,6 +7,7 @@ license = "MIT"
 description = "macros for querying semi-structured data with the JavaScript-like syntax"
 readme = "README.md"
 repository = "https://github.com/jiftechnify/valq"
+categories = ["rust-patterns"]
 keywords = ["macro", "query", "extract", "json", "serde"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
