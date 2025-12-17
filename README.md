@@ -5,7 +5,7 @@
 [crates.io shield]: https://img.shields.io/crates/v/valq
 [crates.io link]: https://crates.io/crates/valq
 
-`valq` provides a macro for querying semi-structured ("JSON-ish") data **with the JavaScript-like syntax**.
+`valq` provides macros for querying semi-structured ("JSON-ish") data **with the JavaScript-like syntax**.
 
 Look & Feel:
 
@@ -34,13 +34,15 @@ Add this to the `Cargo.toml` in your project:
 valq = "*"
 ```
 
+## What's provided
+
 The principal macro provided by this crate is `query_value!`.
 Also, there is a `Result`-returning variant of `query_value!`, called `query_value_result!`.
 
-## `query_value!` macro
+### `query_value!` macro
 A macro for querying, extracting and converting inner value of semi-structured data.
 
-### Basic Queries
+#### Basic Queries
 ```rust
 // get field `foo` from JSON object `obj`
 let foo = query_value!(obj.foo);
@@ -52,7 +54,7 @@ let head = query_value!(obj.arr[0]);
 let abyss = query_value!(obj.path.to.matrix[0][1].abyss);
 ```
 
-### Extracting Mutable Reference to Inner Value
+#### Extracting Mutable Reference to Inner Value
 ```rust
 use serde_json::{json, Value}
 
@@ -67,7 +69,7 @@ assert_eq!(query_value!(obj.foo.bar.x -> u64), Some(100));
 assert_eq!(query_value!(obj.foo.bar.y -> u64), Some(200));
 ```
 
-### Casting & Deserializing to Specified Type
+#### Casting & Deserializing to Specified Type
 ```rust
 // try to cast the queried value into `u64` using `as_u64()` method on that value.
 // results in `None` in case of type mismatch
@@ -94,7 +96,7 @@ let j = json!({"author": {"name": "jiftechnify", "age": 31}});
 let author: Option<Person> = query_value!(j.author >> (Person));
 ```
 
-### Unwrapping Query Results with Default Values
+#### Unwrapping Query Results with Default Values
 ```rust
 use serde_json::json;
 use valq::query_value;
@@ -105,7 +107,7 @@ assert_eq!(query_value!(obj.foo.bar -> u64 ?? 42), 42); // explicitly provided d
 assert_eq!(query_value!(obj.foo.bar -> u64 ?? default), 0u64); // using u64::default()
 ```
 
-## `query_value_result!` macro
+### `query_value_result!` macro
 A variant of `query_value!` that returns `Result<T, valq::Error>` instead of `Option<T>`.
 
 ```rust
@@ -126,6 +128,32 @@ assert!(matches!(result, Err(Error::AsCastFailed(_))));
 // Error::DeserializationFailed: deserialization failure
 let result = query_value_result!(obj.foo >> (Vec<u8>));
 assert!(matches!(result, Err(Error::DeserializationFailed(_))));
+```
+
+### Helper: `transpose_tuple!` macro
+Transposes a tuple of `Option`s/`Result`s into an `Option`/`Result` of a tuple.
+This is meant to be used with `query_value!`/`query_value_result!` macros, for "cherry-picking" deep value from data.
+
+```rust
+use serde_json::json;
+use valq::{query_value, transpose_tuple};
+
+let data = json!({"name": "valq", "version": "0.2.0"});
+
+// Combine multiple Option results into Option<tuple>
+let picks = transpose_tuple!(
+    query_value!(data.name -> str),
+    query_value!(data.version -> str),
+);
+assert_eq!(picks, Some(("valq", "0.2.0")));
+
+// For Result variant, "Result;" prefix is needed
+let picks = transpose_tuple!(
+    Result;
+    query_value_result!(data.name -> str),
+    query_value_result!(data.version -> str),
+);
+assert!(picks.is_ok());
 ```
 
 ## Compatibility
