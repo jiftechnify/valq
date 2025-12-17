@@ -20,7 +20,9 @@
 //! [`query_value_result!`]: crate::query_value_result
 
 mod error;
-pub use error::Error;
+pub use error::{Error, Result};
+
+mod util;
 
 #[doc(hidden)]
 pub use paste::paste as __paste;
