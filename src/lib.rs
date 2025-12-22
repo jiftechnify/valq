@@ -246,51 +246,51 @@ doc_query_value! {macro_rules! query_value {
     /* non-mut traversal */
     // traversal step
     (@trv { $vopt:expr } . $key:ident $($rest:tt)*) => {
-        query_value!(@trv { $vopt.and_then(|v| v.get(stringify!($key))) } $($rest)*)
+        $crate::query_value!(@trv { $vopt.and_then(|v| v.get(stringify!($key))) } $($rest)*)
     };
     (@trv { $vopt:expr } [ $idx:expr ] $($rest:tt)*) => {
-        query_value!(@trv { $vopt.and_then(|v| v.get($idx)) } $($rest)*)
+        $crate::query_value!(@trv { $vopt.and_then(|v| v.get($idx)) } $($rest)*)
     };
     // conversion step -> convert then jump to finalization step
     (@trv { $vopt:expr } -> $dest:ident $($rest:tt)*) => {
         $crate::__paste! {
-            query_value!(@fin { $vopt.and_then(|v| v.[<as_ $dest>]()) } $($rest)*)
+            $crate::query_value!(@fin { $vopt.and_then(|v| v.[<as_ $dest>]()) } $($rest)*)
         }
     };
     (@trv { $vopt:expr } >> $dest:ident $($rest:tt)*) => {
-        query_value!(@fin { $vopt.and_then(|v| <$dest>::deserialize(v.clone()).ok()) } $($rest)*)
+        $crate::query_value!(@fin { $vopt.and_then(|v| <$dest>::deserialize(v.clone()).ok()) } $($rest)*)
     };
     (@trv { $vopt:expr } >> ($dest:ty) $($rest:tt)*) => {
-        query_value!(@fin { $vopt.and_then(|v| <$dest>::deserialize(v.clone()).ok()) } $($rest)*)
+        $crate::query_value!(@fin { $vopt.and_then(|v| <$dest>::deserialize(v.clone()).ok()) } $($rest)*)
     };
     // no conversion -> just jump to finalization step
     (@trv { $vopt:expr } $($rest:tt)*) => {
-        query_value!(@fin { $vopt } $($rest)*)
+        $crate::query_value!(@fin { $vopt } $($rest)*)
     };
 
     /* mut traversal */
     // traversal step
     (@trv_mut { $vopt:expr } . $key:ident $($rest:tt)*) => {
-        query_value!(@trv_mut { $vopt.and_then(|v| v.get_mut(stringify!($key))) } $($rest)*)
+        $crate::query_value!(@trv_mut { $vopt.and_then(|v| v.get_mut(stringify!($key))) } $($rest)*)
     };
     (@trv_mut { $vopt:expr } [ $idx:expr ] $($rest:tt)*) => {
-        query_value!(@trv_mut { $vopt.and_then(|v| v.get_mut($idx)) } $($rest)*)
+        $crate::query_value!(@trv_mut { $vopt.and_then(|v| v.get_mut($idx)) } $($rest)*)
     };
     // conversion step -> convert then jump to finalization step
     (@trv_mut { $vopt:expr } -> $dest:ident $($rest:tt)*) => {
         $crate::__paste! {
-            query_value!(@fin { $vopt.and_then(|v| v.[<as_ $dest _mut>]()) } $($rest)*)
+            $crate::query_value!(@fin { $vopt.and_then(|v| v.[<as_ $dest _mut>]()) } $($rest)*)
         }
     };
     (@trv_mut { $vopt:expr } >> $dest:ident $($rest:tt)*) => {
-        query_value!(@fin { $vopt.and_then(|v| <$dest>::deserialize(v.clone()).ok()) } $($rest)*)
+        $crate::query_value!(@fin { $vopt.and_then(|v| <$dest>::deserialize(v.clone()).ok()) } $($rest)*)
     };
     (@trv_mut { $vopt:expr } >> ($dest:ty) $($rest:tt)*) => {
-        query_value!(@fin { $vopt.and_then(|v| <$dest>::deserialize(v.clone()).ok()) } $($rest)*)
+        $crate::query_value!(@fin { $vopt.and_then(|v| <$dest>::deserialize(v.clone()).ok()) } $($rest)*)
     };
     // no conversion -> just jump to finalization step
     (@trv_mut { $vopt:expr } $($rest:tt)*) => {
-        query_value!(@fin { $vopt } $($rest)*)
+        $crate::query_value!(@fin { $vopt } $($rest)*)
     };
 
     /* finalize: handle unwrapping operator */
@@ -311,10 +311,10 @@ doc_query_value! {macro_rules! query_value {
 
     /* entry points */
     (mut $v:tt $($rest:tt)*) => {
-        query_value!(@trv_mut { Some(&mut $v) } $($rest)*)
+        $crate::query_value!(@trv_mut { Some(&mut $v) } $($rest)*)
     };
     ($v:tt $($rest:tt)*) => {
-        query_value!(@trv { Some(&$v) } $($rest)*)
+        $crate::query_value!(@trv { Some(&$v) } $($rest)*)
     };
 }}
 
@@ -367,7 +367,7 @@ doc_query_value_result! {macro_rules! query_value_result {
     /* non-mut traversal */
     // traversal step
     (@trv [$trace:ident] { $vopt:expr } . $key:ident $($rest:tt)*) => {
-        query_value_result!(@trv [$trace] {
+        $crate::query_value_result!(@trv [$trace] {
             $vopt.and_then(|v| {
                 $trace.push_str(stringify!(.$key));
                 v.get(stringify!($key)).ok_or_else(|| $crate::Error::ValueNotFoundAtPath($trace.clone()))
@@ -375,7 +375,7 @@ doc_query_value_result! {macro_rules! query_value_result {
         } $($rest)*)
     };
     (@trv [$trace:ident] { $vopt:expr } [ $idx:expr ] $($rest:tt)*) => {
-        query_value_result!(@trv [$trace] {
+        $crate::query_value_result!(@trv [$trace] {
             $vopt.and_then(|v| {
                 $trace.push_str(format!("[{}]", stringify!($idx)).as_str());
                 v.get($idx).ok_or_else(|| $crate::Error::ValueNotFoundAtPath($trace.clone()))
@@ -385,7 +385,7 @@ doc_query_value_result! {macro_rules! query_value_result {
     // conversion step -> convert then jump to finalization step
     (@trv [$trace:ident] { $vopt:expr } -> $dest:ident $($rest:tt)*) => {
         $crate::__paste! {
-            query_value_result!(@fin [$trace] {
+            $crate::query_value_result!(@fin [$trace] {
                 $vopt.and_then(|v| {
                     let conv_name = format!("as_{}", stringify!($dest));
                     v.[<as_ $dest>]() .ok_or_else(|| $crate::Error::AsCastFailed(conv_name))
@@ -394,14 +394,14 @@ doc_query_value_result! {macro_rules! query_value_result {
         }
     };
     (@trv [$trace:ident] { $vopt:expr } >> $dest:ident $($rest:tt)*) => {
-        query_value_result!(@fin [$trace] {
+        $crate::query_value_result!(@fin [$trace] {
             $vopt.and_then(|v| {
                 <$dest>::deserialize(v.clone()).map_err(|e| $crate::Error::DeserializationFailed(Box::new(e)))
             })
         } $($rest)*)
     };
     (@trv [$trace:ident] { $vopt:expr } >> ($dest:ty) $($rest:tt)*) => {
-        query_value_result!(@fin [$trace] {
+        $crate::query_value_result!(@fin [$trace] {
             $vopt.and_then(|v| {
                 <$dest>::deserialize(v.clone()).map_err(|e| $crate::Error::DeserializationFailed(Box::new(e)))
             })
@@ -409,13 +409,13 @@ doc_query_value_result! {macro_rules! query_value_result {
     };
     // no conversion -> just jump to finalization step
     (@trv [$trace:ident] { $vopt:expr } $($rest:tt)*) => {
-        query_value_result!(@fin [$trace] { $vopt } $($rest)*)
+        $crate::query_value_result!(@fin [$trace] { $vopt } $($rest)*)
     };
 
     /* mut traversal */
     // traversal step
     (@trv_mut [$trace:ident] { $vopt:expr } . $key:ident $($rest:tt)*) => {
-        query_value_result!(@trv_mut [$trace] {
+        $crate::query_value_result!(@trv_mut [$trace] {
             $vopt.and_then(|v| {
                 $trace.push_str(stringify!(.$key));
                 v.get_mut(stringify!($key)).ok_or_else(|| $crate::Error::ValueNotFoundAtPath($trace.clone()))
@@ -423,7 +423,7 @@ doc_query_value_result! {macro_rules! query_value_result {
         } $($rest)*)
     };
     (@trv_mut [$trace:ident] { $vopt:expr } [ $idx:expr ] $($rest:tt)*) => {
-        query_value_result!(@trv_mut [$trace] {
+        $crate::query_value_result!(@trv_mut [$trace] {
             $vopt.and_then(|v| {
                 $trace.push_str(format!("[{}]", stringify!($idx)).as_str());
                 v.get_mut($idx).ok_or_else(|| $crate::Error::ValueNotFoundAtPath($trace.clone()))
@@ -433,7 +433,7 @@ doc_query_value_result! {macro_rules! query_value_result {
     // conversion step -> convert then jump to finalization step
     (@trv_mut [$trace:ident] { $vopt:expr } -> $dest:ident $($rest:tt)*) => {
         $crate::__paste! {
-            query_value_result!(@fin [$trace] {
+            $crate::query_value_result!(@fin [$trace] {
                 $vopt.and_then(|v| {
                     let conv_name = format!("as_{}_mut", stringify!($dest));
                     v.[<as_ $dest _mut>]().ok_or_else(|| $crate::Error::AsCastFailed(conv_name))
@@ -442,14 +442,14 @@ doc_query_value_result! {macro_rules! query_value_result {
         }
     };
     (@trv_mut [$trace:ident] { $vopt:expr } >> $dest:ident $($rest:tt)*) => {
-        query_value_result!(@fin [$trace] {
+        $crate::query_value_result!(@fin [$trace] {
             $vopt.and_then(|v| {
                 <$dest>::deserialize(v.clone()).map_err(|e| $crate::Error::DeserializationFailed(Box::new(e)))
             })
         } $($rest)*)
     };
     (@trv_mut [$trace:ident] { $vopt:expr } >> ($dest:ty) $($rest:tt)*) => {
-        query_value_result!(@fin [$trace] {
+        $crate::query_value_result!(@fin [$trace] {
             $vopt.and_then(|v| {
                 <$dest>::deserialize(v.clone()).map_err(|e| $crate::Error::DeserializationFailed(Box::new(e)))
             })
@@ -457,7 +457,7 @@ doc_query_value_result! {macro_rules! query_value_result {
     };
     // no conversion -> just jump to finalization step
     (@trv_mut [$trace:ident] { $vopt:expr } $($rest:tt)*) => {
-        query_value_result!(@fin [$trace] { $vopt } $($rest)*)
+        $crate::query_value_result!(@fin [$trace] { $vopt } $($rest)*)
     };
 
     /* finalize: handle unwrapping operator */
@@ -490,9 +490,9 @@ doc_query_value_result! {macro_rules! query_value_result {
 
     /* entry points */
     (mut $v:tt $($rest:tt)*) => {
-        query_value_result!(@trv_mut [trace] { Ok::<_, $crate::Error>(&mut $v) } $($rest)*)
+        $crate::query_value_result!(@trv_mut [trace] { Ok::<_, $crate::Error>(&mut $v) } $($rest)*)
     };
     ($v:tt $($rest:tt)*) => {
-        query_value_result!(@trv [trace] { Ok::<_, $crate::Error>(&$v) } $($rest)*)
+        $crate::query_value_result!(@trv [trace] { Ok::<_, $crate::Error>(&$v) } $($rest)*)
     };
 }}

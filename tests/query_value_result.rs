@@ -132,6 +132,33 @@ mod json {
     }
 
     #[test]
+    fn test_query_with_ref_value() {
+        let j = make_sample_json();
+        let j_ref = &j;
+
+        let tests = [
+            (query_value_result!(j_ref.str), json!("s")),
+            (query_value_result!(j_ref.nums.u64), json!(123)),
+            (query_value_result!(j_ref.obj.inner), json!("value")),
+        ];
+
+        for (res, exp) in tests {
+            assert_eq!(res.unwrap(), &exp);
+        }
+    }
+
+    #[test]
+    fn test_query_with_refmut_value() {
+        let mut j = make_sample_json();
+        let mut j_ref = &mut j;
+
+        assert_eq!(
+            query_value_result!(mut j_ref.obj.inner).unwrap(),
+            &mut json!("value")
+        );
+    }
+
+    #[test]
     fn test_query_and_cast() {
         let j = make_sample_json();
 
