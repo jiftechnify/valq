@@ -1,23 +1,81 @@
-//! # valq
-//! `valq` provides macros for querying and extracting an inner value from a structured data **with the JavaScript-like syntax**.
-//!
-//! ```
-//! # use serde_json::json;
-//! use serde_json::Value;
-//! use valq::{query_value, query_value_result};
-//!
-//! // let obj: Value = ...;
-//! # let obj = json!({});
-//! let deep_val: Option<&Value> = query_value!(obj.path.to.value.at.deep);
-//! let deep_val_res: Result<&Value, valq::Error> = query_value_result!(obj.path.to.value.at.deep);
-//! ```
+//! `valq` provides macros for querying semi-structured ("JSON-ish") data **with the JavaScript-like syntax**.
 //!
 //! The principal macro provided by this crate is `query_value!`. Read [the `query_value` doc] for detailed usage.
-//!
-//! Also, there is a `Result`-returning variant of `query_value!`, called [`query_value_result!`].
+//! There is also a `Result`-returning variant of `query_value!`, called [`query_value_result!`].
 //!
 //! [the `query_value` doc]: crate::query_value
 //! [`query_value_result!`]: crate::query_value_result
+//!
+//! ## Example
+//!
+//! ```rust
+//! use serde_json::{json, Value};
+//! use valq::{query_value, query_value_result};
+//!
+//! let data = json!({
+//!     "package": {
+//!         "name": "valq",
+//!         "authors": ["jiftechnify"],
+//!         "keywords": ["macro", "query", "json"]
+//!     },
+//!     "dependencies": {
+//!         "paste": {
+//!             "version": "1.0.15"
+//!         }
+//!     },
+//!     "dev-dependencies": {
+//!         "serde": {
+//!             "version": "1.0.228",
+//!             "features": ["derive"]
+//!         }
+//!     }
+//! });
+//!
+//! // simple query
+//! assert_eq!(
+//!     query_value!(data.package.name -> str).unwrap(),
+//!     "valq"
+//! );
+//!
+//! // combining dot-notation & bracket-notation
+//! assert_eq!(
+//!     query_value!(data.package.authors[0] -> str).unwrap(),
+//!     "jiftechnify"
+//! );
+//!
+//! // deserializing JSON array into Vec
+//! assert_eq!(
+//!     query_value!(data.package.keywords >> (Vec<String>)).unwrap(),
+//!     ["macro", "query", "json"],
+//! );
+//!
+//! // Result-returning variant for useful error
+//! let res: valq::Result<&str> = query_value_result!(data.package.readme -> str);
+//! if let Err(valq::Error::ValueNotFoundAtPath(path)) = res {
+//!     assert_eq!(path, "data.package.readme");
+//! } else {
+//!     panic!("should be error");
+//! }
+//!
+//! // unwrapping with default value
+//! assert_eq!(
+//!     query_value!(data.package.readme -> str ?? "README.md"),
+//!     "README.md",
+//! );
+//!
+//! // "dynamic" query with bracket-notation
+//! let dep_name = "paste";
+//! assert_eq!(
+//!     query_value!(data.dependencies[dep_name].version -> str).unwrap(),
+//!     "1.0.15",
+//! );
+//!
+//! // put it all together!
+//! assert_eq!(
+//!     query_value!(data["dev-dependencies"].serde.features[0] >> String ?? "none".into()),
+//!     "derive".to_string(),
+//! );
+//! ```
 
 mod error;
 pub use error::{Error, Result};
