@@ -37,7 +37,7 @@ valq = "*"
 ## What's provided
 
 The principal macro provided by this crate is `query_value!`.
-Also, there is a `Result`-returning variant of `query_value!`, called `query_value_result!`.
+There is also a `Result`-returning variant of `query_value!`, called `query_value_reosult!`.
 
 ### `query_value!` macro
 A macro for querying, extracting and converting inner value of semi-structured data.
