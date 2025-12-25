@@ -9,6 +9,7 @@
 //! ## Example
 //!
 //! ```rust
+//! use serde::Deserialize;
 //! use serde_json::{json, Value};
 //! use valq::{query_value, query_value_result};
 //!
@@ -31,19 +32,20 @@
 //!     }
 //! });
 //!
-//! // simple query
+//! // Simple query
 //! assert_eq!(
 //!     query_value!(data.package.name -> str).unwrap(),
 //!     "valq"
 //! );
 //!
-//! // combining dot-notation & bracket-notation
+//! // Combining dot-notations & bracket-notations
 //! assert_eq!(
 //!     query_value!(data.package.authors[0] -> str).unwrap(),
 //!     "jiftechnify"
 //! );
 //!
-//! // deserializing JSON array into Vec
+//! // Deserializing a JSON array into a Vec
+//! // Make sure that you put the line: `use serde::Deserialize`!
 //! assert_eq!(
 //!     query_value!(data.package.keywords >> (Vec<String>)).unwrap(),
 //!     ["macro", "query", "json"],
@@ -52,25 +54,25 @@
 //! // Result-returning variant for useful error
 //! let res: valq::Result<&str> = query_value_result!(data.package.readme -> str);
 //! if let Err(valq::Error::ValueNotFoundAtPath(path)) = res {
-//!     assert_eq!(path, "data.package.readme");
+//!     assert_eq!(path, ".package.readme");
 //! } else {
 //!     panic!("should be error");
 //! }
 //!
-//! // unwrapping with default value
+//! // Unwrapping with default value
 //! assert_eq!(
 //!     query_value!(data.package.readme -> str ?? "README.md"),
 //!     "README.md",
 //! );
 //!
-//! // "dynamic" query with bracket-notation
+//! // "Dynamic" query with bracket-notation
 //! let dep_name = "paste";
 //! assert_eq!(
 //!     query_value!(data.dependencies[dep_name].version -> str).unwrap(),
 //!     "1.0.15",
 //! );
 //!
-//! // put it all together!
+//! // Put it all together!
 //! assert_eq!(
 //!     query_value!(data["dev-dependencies"].serde.features[0] >> String ?? "none".into()),
 //!     "derive".to_string(),
