@@ -17,6 +17,6 @@ paste = "1.0.15"
 
 [dev-dependencies]
 serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.148"
+serde_json = "1.0.149"
 serde_yaml = "0.9.34"
 toml = "0.9.10"
